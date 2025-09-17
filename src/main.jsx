@@ -6,6 +6,7 @@ import Home from './Home';
 import Gallery from './Gallery';
 import Booking from './Booking';
 import Login from './Login';
+import Signup from './Signup';
 import Profile from './Profile';
 
 import './index.css';
@@ -18,6 +19,7 @@ function Nav() {
     { to: '/gallery', label: 'Gallery' },
     { to: '/booking', label: 'Booking' },
     { to: '/login', label: 'Login' },
+    { to: '/signup', label: 'Signup' },  
     { to: '/profile', label: 'Profile' },
   ];
 
@@ -51,6 +53,7 @@ function AppShell() {
           <Route path="/gallery" element={<Gallery />} />
           <Route path="/booking" element={<Booking />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} /> {/* ✅ Signup route */}
           <Route path="/profile" element={<Profile />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
