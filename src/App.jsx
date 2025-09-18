@@ -2,12 +2,12 @@ import { Outlet } from "react-router-dom";
 import Navbar from "./components/Navbar";
 
 export default function App() {
+  console.log("API Base URL:", import.meta.env.VITE_API_BASE_URL);
+
   return (
-    <div className="min-h-screen">
+    <>
       <Navbar />
-      <main className="p-6">
-        <Outlet />
-      </main>
-    </div>
+      <Outlet />
+    </>
   );
 }
