@@ -1,4 +1,6 @@
+// salon-frontend/src/Booking.jsx
 import { useMemo, useState } from "react";
+import { api } from "./lib/api";
 
 const mockStyles = [
   {
@@ -49,6 +51,10 @@ export default function Booking() {
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  // new: customer details
+  const [customerName, setCustomerName] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
+
   const selectedStyle = useMemo(
     () => mockStyles.find((s) => s.id === selectedStyleId) || null,
     [selectedStyleId]
@@ -59,13 +65,16 @@ export default function Booking() {
     if (!selectedStyleId) e.style = "Please select a style";
     if (!date) e.date = "Choose a date";
     if (!time) e.time = "Choose a time";
+    if (!customerName) e.customerName = "Your name is required";
+    if (!customerEmail || !/^\S+@\S+\.\S+$/.test(customerEmail))
+      e.customerEmail = "Enter a valid email";
 
     // basic future date check
     if (date && new Date(`${date}T${time || "00:00"}`) < new Date()) {
       e.date = "Pick a future date/time";
     }
     return e;
-  }, [selectedStyleId, date, time]);
+  }, [selectedStyleId, date, time, customerName, customerEmail]);
 
   const isValid = Object.keys(errors).length === 0;
 
@@ -75,18 +84,32 @@ export default function Booking() {
 
     setSubmitting(true);
     try {
-      // TODO: replace with real API when backend is ready
-      // const res = await api.post("/appointments", {
-      //   styleId: selectedStyle.id,
-      //   datetime: new Date(`${date}T${time}:00Z`).toISOString(),
-      //   notes,
-      // });
+      // build ISO datetime from selected date + time (local -> toISOString() converts to UTC)
+      const appointmentISO = new Date(`${date}T${time}`).toISOString();
 
-      await new Promise((r) => setTimeout(r, 800)); // simulate network
-      alert(
-        `Booked: ${selectedStyle.name} on ${date} at ${time}\n(placeholder submit)`
-      );
-      // optional: navigate("/profile") after success
+      const payload = {
+        customer_name: customerName,
+        customer_email: customerEmail,
+        style_id: selectedStyle.id,
+        style_name: selectedStyle.name,
+        appointment_time: appointmentISO,
+        notes,
+      };
+
+      await api.createAppointment(payload);
+
+      alert(`Booked: ${selectedStyle.name} on ${date} at ${time}`);
+
+      // reset form
+      setSelectedStyleId("");
+      setDate("");
+      setTime("");
+      setNotes("");
+      setCustomerName("");
+      setCustomerEmail("");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to book appointment. See console for details.");
     } finally {
       setSubmitting(false);
     }
@@ -145,6 +168,34 @@ export default function Booking() {
           {/* date + time */}
           <Section title="2) Pick date & time">
             <form className="grid sm:grid-cols-2 gap-5" onSubmit={handleSubmit}>
+              {/* Customer name/email */}
+              <div className="sm:col-span-2 grid sm:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-sm font-medium text-salon-dark">Full name</label>
+                  <input
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    className="mt-1 w-full rounded-xl border px-3 py-2 outline-none"
+                    placeholder="Your name"
+                    required
+                  />
+                  {errors.customerName && <p className="text-xs text-rose-600 mt-1">{errors.customerName}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-salon-dark">Email</label>
+                  <input
+                    type="email"
+                    value={customerEmail}
+                    onChange={(e) => setCustomerEmail(e.target.value)}
+                    className="mt-1 w-full rounded-xl border px-3 py-2 outline-none"
+                    placeholder="you@example.com"
+                    required
+                  />
+                  {errors.customerEmail && <p className="text-xs text-rose-600 mt-1">{errors.customerEmail}</p>}
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-salon-dark">
                   Date
