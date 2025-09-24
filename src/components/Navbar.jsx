@@ -1,11 +1,14 @@
 import { NavLink, Link } from "react-router-dom";
+import { useState } from "react";
 
-const navItem =
+const baseItem =
   "px-3 py-2 rounded-full text-sm font-medium transition hover:bg-rose-50 hover:text-salon-primary";
 const active =
   "bg-salon-primary text-white hover:bg-salon-primary hover:text-white";
 
 export default function Navbar() {
+  const [open, setOpen] = useState(false);
+
   return (
     <header className="sticky top-0 z-40 bg-white/80 backdrop-blur border-b border-rose-100">
       <div className="mx-auto max-w-6xl px-4 h-16 flex items-center justify-between">
@@ -19,13 +22,23 @@ export default function Navbar() {
           </span>
         </Link>
 
-        {/* Nav */}
+        {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-1">
-          <NavLink to="/" end className={({isActive}) => `${navItem} ${isActive ? active : "text-salon-dark"}`}>Home</NavLink>
-          <NavLink to="/gallery" className={({isActive}) => `${navItem} ${isActive ? active : "text-salon-dark"}`}>Gallery</NavLink>
-          <NavLink to="/booking" className={({isActive}) => `${navItem} ${isActive ? active : "text-salon-dark"}`}>Booking</NavLink>
-          <NavLink to="/login" className={({isActive}) => `${navItem} ${isActive ? active : "text-salon-dark"}`}>Login</NavLink>
-          <NavLink to="/profile" className={({isActive}) => `${navItem} ${isActive ? active : "text-salon-dark"}`}>Profile</NavLink>
+          <NavLink to="/" end className={({ isActive }) => `${baseItem} ${isActive ? active : "text-salon-dark"}`}>
+            Home
+          </NavLink>
+          <NavLink to="/gallery" className={({ isActive }) => `${baseItem} ${isActive ? active : "text-salon-dark"}`}>
+            Gallery
+          </NavLink>
+          <NavLink to="/booking" className={({ isActive }) => `${baseItem} ${isActive ? active : "text-salon-dark"}`}>
+            Booking
+          </NavLink>
+          <NavLink to="/login" className={({ isActive }) => `${baseItem} ${isActive ? active : "text-salon-dark"}`}>
+            Login
+          </NavLink>
+          <NavLink to="/profile" className={({ isActive }) => `${baseItem} ${isActive ? active : "text-salon-dark"}`}>
+            Profile
+          </NavLink>
         </nav>
 
         {/* CTA */}
@@ -36,16 +49,39 @@ export default function Navbar() {
           Book Now
         </Link>
 
-        {/* Mobile menu placeholder (simple) */}
-        <div className="md:hidden">
-          <Link
-            to="/booking"
-            className="inline-flex items-center rounded-full bg-salon-primary px-4 py-2 text-white"
-          >
-            Book
-          </Link>
-        </div>
+        {/* Mobile */}
+        <button
+          className="md:hidden inline-flex items-center rounded-full px-3 py-2 border border-rose-200 text-salon-dark"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          aria-controls="mobile-menu"
+        >
+          Menu
+        </button>
       </div>
+
+      {/* Mobile menu (simple) */}
+      {open && (
+        <div id="mobile-menu" className="md:hidden border-t border-rose-100">
+          <nav className="mx-auto max-w-6xl px-4 py-3 flex flex-col gap-1">
+            <NavLink to="/" end onClick={() => setOpen(false)} className={({ isActive }) => `${baseItem} ${isActive ? active : "text-salon-dark"}`}>
+              Home
+            </NavLink>
+            <NavLink to="/gallery" onClick={() => setOpen(false)} className={({ isActive }) => `${baseItem} ${isActive ? active : "text-salon-dark"}`}>
+              Gallery
+            </NavLink>
+            <NavLink to="/booking" onClick={() => setOpen(false)} className={({ isActive }) => `${baseItem} ${isActive ? active : "text-salon-dark"}`}>
+              Booking
+            </NavLink>
+            <NavLink to="/login" onClick={() => setOpen(false)} className={({ isActive }) => `${baseItem} ${isActive ? active : "text-salon-dark"}`}>
+              Login
+            </NavLink>
+            <NavLink to="/profile" onClick={() => setOpen(false)} className={({ isActive }) => `${baseItem} ${isActive ? active : "text-salon-dark"}`}>
+              Profile
+            </NavLink>
+          </nav>
+        </div>
+      )}
     </header>
   );
 }

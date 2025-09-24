@@ -2,7 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-import Navbar from "./components/Navbar";   // <-- new
+import Navbar from "./components/Navbar";   
 import Home from "./Home";
 import Gallery from "./Gallery";
 import Booking from "./Booking";

@@ -1,4 +1,6 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
+import { appointmentsApi } from "./lib/appointmentsApi";
 
 const mockStyles = [
   {
@@ -43,11 +45,21 @@ function Section({ title, children }) {
 }
 
 export default function Booking() {
+  const location = useLocation();
   const [selectedStyleId, setSelectedStyleId] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // Preselect style from URL ?styleId=...
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const fromUrl = params.get("styleId");
+    if (fromUrl && mockStyles.some((s) => s.id === fromUrl)) {
+      setSelectedStyleId(fromUrl);
+    }
+  }, [location.search]);
 
   const selectedStyle = useMemo(
     () => mockStyles.find((s) => s.id === selectedStyleId) || null,
@@ -59,8 +71,6 @@ export default function Booking() {
     if (!selectedStyleId) e.style = "Please select a style";
     if (!date) e.date = "Choose a date";
     if (!time) e.time = "Choose a time";
-
-    // basic future date check
     if (date && new Date(`${date}T${time || "00:00"}`) < new Date()) {
       e.date = "Pick a future date/time";
     }
@@ -72,21 +82,16 @@ export default function Booking() {
   async function handleSubmit(e) {
     e.preventDefault();
     if (!isValid || !selectedStyle) return;
-
     setSubmitting(true);
     try {
-      // TODO: replace with real API when backend is ready
-      // const res = await api.post("/appointments", {
-      //   styleId: selectedStyle.id,
-      //   datetime: new Date(`${date}T${time}:00Z`).toISOString(),
-      //   notes,
-      // });
-
-      await new Promise((r) => setTimeout(r, 800)); // simulate network
-      alert(
-        `Booked: ${selectedStyle.name} on ${date} at ${time}\n(placeholder submit)`
-      );
-      // optional: navigate("/profile") after success
+      const iso = new Date(`${date}T${time}:00`).toISOString();
+      await appointmentsApi.create({
+        style_id: selectedStyle.id,
+        datetime: iso,
+        notes,
+      });
+      alert(`Booked: ${selectedStyle.name} on ${date} at ${time}`);
+      // TODO: navigate("/profile")
     } finally {
       setSubmitting(false);
     }

@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import StyleCard from "./components/StyleCard";
-import { api } from "./lib/api";
+import { stylesApi } from "./lib/stylesApi";
 
 const categories = [
   { id: "all", label: "All" },
@@ -18,33 +19,47 @@ const sorts = [
 ];
 
 export default function Gallery() {
+  const navigate = useNavigate();
+
   const [q, setQ] = useState("");
   const [category, setCategory] = useState("all");
   const [sort, setSort] = useState("popular");
   const [styles, setStyles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
-  const empty = useMemo(() => !loading && styles.length === 0, [loading, styles]);
+  const empty = useMemo(() => !loading && !loadError && styles.length === 0, [loading, loadError, styles]);
+
+  const fetchStyles = useCallback(async () => {
+    setLoading(true);
+    setLoadError("");
+    try {
+      const data = await stylesApi.list({ q, category, sort });
+      // Support either raw array or DRF pagination { results: [...] }
+      const items = Array.isArray(data) ? data : (data?.results ?? []);
+      setStyles(items);
+    } catch (err) {
+      console.error("Failed to load styles:", err);
+      setStyles([]);
+      setLoadError("Couldn’t load styles from the server.");
+    } finally {
+      setLoading(false);
+    }
+  }, [q, category, sort]);
 
   useEffect(() => {
     let alive = true;
-    setLoading(true);
-    api
-      .listStyles({ q, category, sort })
-      .then((data) => {
-        if (alive) setStyles(data);
-      })
-      .finally(() => alive && setLoading(false));
+    (async () => {
+      await fetchStyles();
+    })();
     return () => {
-      alive = false;
+      alive = false; // just for symmetry; axios cancels would be nicer
     };
-  }, [q, category, sort]);
+  }, [fetchStyles]);
 
   function handleSelect(style) {
-    // Navigate to booking prefilled later if you want:
-    // navigate(`/booking?styleId=${style.id}`)
-    // For now, just a nice toast:
-    alert(`Selected "${style.name}" — go to Booking to confirm.`);
+    // go straight to Booking, prefilled
+    navigate(`/booking?styleId=${encodeURIComponent(style.id)}`);
   }
 
   return (
@@ -101,7 +116,7 @@ export default function Gallery() {
         </div>
       </div>
 
-      {/* Grid */}
+      {/* Grid / states */}
       {loading ? (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {[...Array(6)].map((_, i) => (
@@ -112,6 +127,8 @@ export default function Gallery() {
             </div>
           ))}
         </div>
+      ) : loadError ? (
+        <div className="text-center text-rose-600">{loadError}</div>
       ) : empty ? (
         <div className="text-center text-salon-dark/70">
           No styles match your search. Try a different term or category.

@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
+import { authApi } from "./lib/authApi";
 
 const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -19,17 +20,21 @@ export default function Login() {
 
   const isValid = Object.keys(errors).length === 0;
 
-  const onChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+  const onChange = (e) =>
+    setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
   const onBlur = (e) => setTouched((t) => ({ ...t, [e.target.name]: true }));
 
   async function handleSubmit(e) {
     e.preventDefault();
     if (!isValid) return;
-
-    // Placeholder: wire to real API when backend is ready
-    // const res = await authApi.login({ email: form.email, password: form.password });
-
-    alert(`Logged in as ${form.email} (placeholder)`);
+    try {
+      await authApi.login({ email: form.email, password: form.password });
+      alert(`Welcome back, ${form.email}!`);
+      // TODO: navigate("/profile");
+    } catch (err) {
+      console.error(err);
+      alert("Login failed. Check your credentials.");
+    }
   }
 
   return (
@@ -43,7 +48,10 @@ export default function Login() {
         <form className="mt-6 space-y-5" onSubmit={handleSubmit} noValidate>
           {/* Email */}
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-salon-dark">
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium text-salon-dark"
+            >
               Email
             </label>
             <input
@@ -55,7 +63,11 @@ export default function Login() {
               onChange={onChange}
               onBlur={onBlur}
               className={`mt-1 w-full rounded-xl border px-3 py-2 outline-none transition
-                ${errors.email && touched.email ? "border-rose-300 ring-2 ring-rose-100" : "border-rose-200 focus:ring-2 focus:ring-rose-200"}`}
+                ${
+                  errors.email && touched.email
+                    ? "border-rose-300 ring-2 ring-rose-100"
+                    : "border-rose-200 focus:ring-2 focus:ring-rose-200"
+                }`}
               placeholder="you@example.com"
             />
             {errors.email && touched.email && (
@@ -65,7 +77,10 @@ export default function Login() {
 
           {/* Password */}
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-salon-dark">
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-salon-dark"
+            >
               Password
             </label>
             <div className="relative mt-1">
@@ -78,7 +93,11 @@ export default function Login() {
                 onChange={onChange}
                 onBlur={onBlur}
                 className={`w-full rounded-xl border px-3 py-2 pr-12 outline-none transition
-                  ${errors.password && touched.password ? "border-rose-300 ring-2 ring-rose-100" : "border-rose-200 focus:ring-2 focus:ring-rose-200"}`}
+                  ${
+                    errors.password && touched.password
+                      ? "border-rose-300 ring-2 ring-rose-100"
+                      : "border-rose-200 focus:ring-2 focus:ring-rose-200"
+                  }`}
                 placeholder="••••••••"
               />
               <button
@@ -100,7 +119,11 @@ export default function Login() {
             type="submit"
             disabled={!isValid}
             className={`w-full rounded-xl px-4 py-2 font-medium text-white transition
-              ${isValid ? "bg-salon-primary hover:shadow-md" : "bg-rose-300/60 cursor-not-allowed"}`}
+              ${
+                isValid
+                  ? "bg-salon-primary hover:shadow-md"
+                  : "bg-rose-300/60 cursor-not-allowed"
+              }`}
           >
             Sign in
           </button>
@@ -108,7 +131,10 @@ export default function Login() {
 
         <p className="mt-5 text-center text-sm text-salon-dark/70">
           New here?{" "}
-          <Link to="/signup" className="font-medium text-salon-primary hover:underline">
+          <Link
+            to="/signup"
+            className="font-medium text-salon-primary hover:underline"
+          >
             Create an account
           </Link>
         </p>
