@@ -28,15 +28,16 @@ export default function Gallery() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
-  const empty = useMemo(() => !loading && !loadError && styles.length === 0, [loading, loadError, styles]);
+  const empty = useMemo(
+    () => !loading && !loadError && styles.length === 0,
+    [loading, loadError, styles]
+  );
 
   const fetchStyles = useCallback(async () => {
     setLoading(true);
     setLoadError("");
     try {
-      const data = await stylesApi.list({ q, category, sort });
-      // Support either raw array or DRF pagination { results: [...] }
-      const items = Array.isArray(data) ? data : (data?.results ?? []);
+      const items = await stylesApi.list({ q, category, sort });
       setStyles(items);
     } catch (err) {
       console.error("Failed to load styles:", err);
@@ -48,17 +49,10 @@ export default function Gallery() {
   }, [q, category, sort]);
 
   useEffect(() => {
-    let alive = true;
-    (async () => {
-      await fetchStyles();
-    })();
-    return () => {
-      alive = false; // just for symmetry; axios cancels would be nicer
-    };
+    fetchStyles();
   }, [fetchStyles]);
 
   function handleSelect(style) {
-    // go straight to Booking, prefilled
     navigate(`/booking?styleId=${encodeURIComponent(style.id)}`);
   }
 
@@ -67,7 +61,7 @@ export default function Gallery() {
       <header className="mb-6">
         <h1 className="section-title">Style Gallery</h1>
         <p className="text-center text-salon-dark/70">
-          Browse services by category, compare prices & durations, and pick your favorite.
+          Browse services by category, compare prices &amp; durations, and pick your favorite.
         </p>
       </header>
 

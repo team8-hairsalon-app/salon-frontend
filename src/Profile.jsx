@@ -1,130 +1,193 @@
-import { useState } from 'react';
-import FormField from './components/FormField';
-import { validateEmail, passwordStrength, validateDOB } from "./lib/validators";
-
-
-const initialUser = {
-  avatarUrl: '',
-  firstName: 'Jimmy',
-  lastName: 'Lubeta',
-  email: 'jimmy@example.com',
-  phone: '(555) 123-4567',
-  dob: '1999-09-09',
-  preferredStylist: 'Any',
-};
+import { useEffect, useState } from "react";
+import { profileApi } from "./lib/profileApi";
+import toast from "react-hot-toast";
 
 export default function Profile() {
-  const [user, setUser] = useState(initialUser);
-  const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState(user);
-  const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
-  const fullName = `${user.firstName} ${user.lastName}`.trim();
+  const [form, setForm] = useState({
+    email: "",
+    first_name: "",
+    last_name: "",
+  });
 
-  const validate = (f) => {
-    const e = {};
-    if (!f.firstName) e.firstName = 'First name is required';
-    if (!f.lastName) e.lastName = 'Last name is required';
-    if (!isEmail?.(f.email)) e.email = 'Enter a valid email';
-    if (!isPhone?.(f.phone)) e.phone = 'Enter a valid phone';
-    if (!isPastDate?.(f.dob)) e.dob = 'Enter a valid past date';
-    return e;
-  };
+  // Keep a snapshot so Cancel can revert
+  const [original, setOriginal] = useState({
+    email: "",
+    first_name: "",
+    last_name: "",
+  });
 
-  const onChange = (ev) => {
-    const { name, value } = ev.target;
-    const next = { ...form, [name]: value };
-    setForm(next);
-    setErrors(validate(next));
-  };
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const me = await profileApi.getMe();
+        if (!mounted) return;
+        const values = {
+          email: me.email || "",
+          first_name: me.first_name || "",
+          last_name: me.last_name || "",
+        };
+        setForm(values);
+        setOriginal(values);
+      } catch (e) {
+        console.error(e);
+        toast.error("Couldn’t load your profile.");
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
-  const onSave = async (ev) => {
-    ev.preventDefault();
-    const e = validate(form);
-    setErrors(e);
-    if (Object.keys(e).length) return;
+  function onChange(e) {
+    const { name, value } = e.target;
+    setForm((f) => ({ ...f, [name]: value }));
+  }
 
+  function onStartEdit() {
+    setIsEditing(true);
+  }
+
+  function onCancel() {
+    setForm(original);     // revert unsaved edits
+    setIsEditing(false);
+  }
+
+  async function onSave(e) {
+    e.preventDefault();
     setSaving(true);
     try {
-      // TODO: replace with real API call later
-      // await api.updateProfile(form);
-      setUser(form);
-      setEditing(false);
-      alert('Profile saved (placeholder)');
-    } catch {
-      alert('Save failed (placeholder)');
+      const updated = await profileApi.updateMe({
+        first_name: form.first_name,
+        last_name: form.last_name,
+      });
+      // update local state & snapshot
+      const values = {
+        email: updated.email || form.email,
+        first_name: updated.first_name || "",
+        last_name: updated.last_name || "",
+      };
+      setForm(values);
+      setOriginal(values);
+
+      // refresh navbar greeting
+      localStorage.setItem("user_first_name", values.first_name || "");
+
+      toast.success("Profile saved!");
+      setIsEditing(false); // <-- return to read-only (Edit button shows)
+    } catch (e) {
+      console.error(e);
+      toast.error("Couldn’t save changes.");
     } finally {
       setSaving(false);
     }
-  };
+  }
 
-  const onCancel = () => {
-    setForm(user);
-    setErrors({});
-    setEditing(false);
-  };
+  if (loading) {
+    return (
+      <main className="section">
+        <h1 className="section-title">Profile</h1>
+        <div className="card animate-pulse h-40" />
+      </main>
+    );
+  }
+
+  const nameInputBase =
+    "mt-1 w-full rounded-xl border px-3 py-2 outline-none transition";
+  const readOnlyStyles = "border-rose-200 bg-rose-50/50 text-salon-dark/80";
+  const editableStyles =
+    "border-rose-200 focus:ring-2 focus:ring-rose-200 bg-white";
 
   return (
-    <div className="mx-auto max-w-3xl p-6 space-y-6">
-      {/* Overview */}
-      <section className="rounded-xl border border-gray-200 bg-white/60 backdrop-blur p-6 shadow-sm">
-        <div className="flex items-center gap-4">
-          <img
-            src={user.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName || 'Guest')}`}
-            alt="Avatar"
-            className="h-16 w-16 rounded-full object-cover ring-2 ring-gray-200"
-          />
-          <div>
-            <h1 className="text-2xl font-semibold">{fullName || 'Your profile'}</h1>
-            <p className="text-gray-600">{user.email}</p>
-            <p className="text-gray-600">{user.phone}</p>
-          </div>
-          {!editing && (
+    <main className="section">
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="section-title">Profile</h1>
+
+        {!isEditing ? (
+          <button
+            type="button"
+            onClick={onStartEdit}
+            className="rounded-xl bg-salon-primary px-4 py-2 text-white font-medium hover:shadow-md"
+          >
+            Edit
+          </button>
+        ) : (
+          <div className="flex items-center gap-3">
             <button
-              className="ms-auto rounded-lg px-4 py-2 bg-black text-white hover:bg-black/90"
-              onClick={() => setEditing(true)}
+              type="button"
+              onClick={onCancel}
+              className="rounded-xl border border-rose-200 px-4 py-2 text-salon-dark hover:bg-rose-50"
+              disabled={saving}
             >
-              Edit
-            </button>
-          )}
-        </div>
-        <div className="mt-4 text-sm text-gray-600">
-          <div><span className="font-medium">DOB:</span> {user.dob || '—'}</div>
-          <div><span className="font-medium">Preferred stylist:</span> {user.preferredStylist || '—'}</div>
-        </div>
-      </section>
-
-      {/* Edit form */}
-      {editing && (
-        <form onSubmit={onSave} className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormField label="First name" name="firstName" value={form.firstName} onChange={onChange} error={errors.firstName} />
-            <FormField label="Last name"  name="lastName"  value={form.lastName}  onChange={onChange} error={errors.lastName} />
-          </div>
-
-          <FormField type="email" label="Email" name="email" value={form.email} onChange={onChange} error={errors.email} />
-          <FormField label="Phone" name="phone" value={form.phone} onChange={onChange} error={errors.phone} placeholder="555-555-5555" />
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormField type="date" label="Date of birth" name="dob" value={form.dob} onChange={onChange} error={errors.dob} />
-            <FormField label="Preferred stylist" name="preferredStylist" value={form.preferredStylist} onChange={onChange} placeholder="Any" />
-          </div>
-
-          <div className="flex gap-3 pt-2">
-            <button
-              type="submit"
-              disabled={saving || Object.keys(errors).length > 0}
-              className={`rounded-lg px-4 py-2 text-white ${saving || Object.keys(errors).length ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}
-            >
-              {saving ? 'Saving…' : 'Save changes'}
-            </button>
-            <button type="button" onClick={onCancel} className="rounded-lg px-4 py-2 border border-gray-300">
               Cancel
             </button>
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={saving}
+              className={`rounded-xl px-4 py-2 text-white font-medium ${
+                saving
+                  ? "bg-rose-300/60 cursor-not-allowed"
+                  : "bg-salon-primary hover:shadow-md"
+              }`}
+            >
+              {saving ? "Saving…" : "Save"}
+            </button>
           </div>
-        </form>
-      )}
-    </div>
+        )}
+      </div>
+
+      <form className="max-w-2xl space-y-6 mt-4" onSubmit={onSave}>
+        {/* Email (always read-only) */}
+        <div>
+          <label className="block text-sm font-medium text-salon-dark">Email</label>
+          <input
+            name="email"
+            value={form.email}
+            readOnly
+            className={`${nameInputBase} ${readOnlyStyles}`}
+          />
+          <p className="mt-1 text-xs text-salon-dark/60">Email can’t be changed.</p>
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-5">
+          {/* First name */}
+          <div>
+            <label className="block text-sm font-medium text-salon-dark">First name</label>
+            <input
+              name="first_name"
+              value={form.first_name}
+              onChange={onChange}
+              readOnly={!isEditing}
+              className={`${nameInputBase} ${
+                isEditing ? editableStyles : readOnlyStyles
+              }`}
+              placeholder="First name"
+            />
+          </div>
+
+          {/* Last name */}
+          <div>
+            <label className="block text-sm font-medium text-salon-dark">Last name</label>
+            <input
+              name="last_name"
+              value={form.last_name}
+              onChange={onChange}
+              readOnly={!isEditing}
+              className={`${nameInputBase} ${
+                isEditing ? editableStyles : readOnlyStyles
+              }`}
+              placeholder="Last name"
+            />
+          </div>
+        </div>
+      </form>
+    </main>
   );
 }

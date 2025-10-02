@@ -1,10 +1,12 @@
 import { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { toast } from "react-hot-toast";   // ✅ correct import
 import { authApi } from "./lib/authApi";
 
 const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function Login() {
+  const navigate = useNavigate();
   const [form, setForm] = useState({ email: "", password: "" });
   const [showPw, setShowPw] = useState(false);
   const [touched, setTouched] = useState({});
@@ -29,11 +31,20 @@ export default function Login() {
     if (!isValid) return;
     try {
       await authApi.login({ email: form.email, password: form.password });
-      alert(`Welcome back, ${form.email}!`);
-      // TODO: navigate("/profile");
+
+      // store user in localStorage
+      localStorage.setItem("user_email", form.email);
+
+      // ✅ toast on success
+      toast.success("Signed in successfully!");
+
+      // redirect
+      navigate("/booking");
     } catch (err) {
       console.error(err);
-      alert("Login failed. Check your credentials.");
+
+      // ❌ toast on error
+      toast.error("Login failed. Check your credentials.");
     }
   }
 
@@ -48,10 +59,7 @@ export default function Login() {
         <form className="mt-6 space-y-5" onSubmit={handleSubmit} noValidate>
           {/* Email */}
           <div>
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-salon-dark"
-            >
+            <label htmlFor="email" className="block text-sm font-medium text-salon-dark">
               Email
             </label>
             <input
@@ -77,10 +85,7 @@ export default function Login() {
 
           {/* Password */}
           <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-salon-dark"
-            >
+            <label htmlFor="password" className="block text-sm font-medium text-salon-dark">
               Password
             </label>
             <div className="relative mt-1">
@@ -131,10 +136,7 @@ export default function Login() {
 
         <p className="mt-5 text-center text-sm text-salon-dark/70">
           New here?{" "}
-          <Link
-            to="/signup"
-            className="font-medium text-salon-primary hover:underline"
-          >
+          <Link to="/signup" className="font-medium text-salon-primary hover:underline">
             Create an account
           </Link>
         </p>

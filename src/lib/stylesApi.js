@@ -21,8 +21,6 @@ export const stylesApi = {
     if (sort) params.sort = sort;
 
     const res = await http.get("/styles/", { params });
-    console.log("GET /styles/ status", res.status, "data:", res.data);
-
     const raw = Array.isArray(res.data) ? res.data : (res.data?.results ?? []);
     return raw.map(mapStyle);
   },

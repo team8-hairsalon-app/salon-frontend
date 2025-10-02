@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { authApi } from "./lib/authApi";
+import { toast } from "react-hot-toast";
 
 const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const pwStrongRe = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d).{8,}$/;
@@ -17,6 +18,7 @@ export default function Signup() {
   const [showPw, setShowPw] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [touched, setTouched] = useState({});
+  const navigate = useNavigate();
 
   const errors = useMemo(() => {
     const e = {};
@@ -52,11 +54,29 @@ export default function Signup() {
         password: form.password,
         dob: form.dob,
       });
-      alert(`Welcome, ${form.firstName}! Your account is created.`);
-      // TODO: navigate("/login");
+
+      toast.success("Account created! Please sign in.");
+      navigate("/login", { replace: true });
     } catch (err) {
+      // Try to detect "email already exists" from DRF/Django messages
+      const status = err?.response?.status;
+      const data = err?.response?.data;
+
+      const emailAlreadyExists =
+        status === 400 &&
+        (Array.isArray(data?.email) ||
+          typeof data?.email === "string" ||
+          Array.isArray(data?.username) ||
+          typeof data?.username === "string");
+
+      if (emailAlreadyExists) {
+        toast.error("This account already exists — please sign in.");
+        navigate("/login", { replace: true });
+        return;
+      }
+
       console.error(err);
-      alert("Signup failed. Try a different email or check fields.");
+      toast.error("Signup failed. Try a different email or check fields.");
     }
   }
 
