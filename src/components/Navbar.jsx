@@ -4,7 +4,7 @@ import { SALON } from "../lib/config";
 
 const baseItem =
   "px-3 py-2 rounded-full text-sm font-medium transition hover:bg-rose-50 hover:text-salon-primary";
-const active =
+const activeItem =
   "bg-salon-primary text-white hover:bg-salon-primary hover:text-white";
 
 export default function Navbar() {
@@ -22,10 +22,10 @@ export default function Navbar() {
       setGreetingName(first || (email ? email.split("@")[0] : ""));
     };
 
-    // initial read
+    // initial
     syncAuth();
 
-    // react to changes from other code / tabs
+    // react to changes from other tabs / code
     window.addEventListener("storage", syncAuth);
     window.addEventListener("auth-updated", syncAuth);
 
@@ -61,7 +61,7 @@ export default function Navbar() {
             to="/"
             end
             className={({ isActive }) =>
-              `${baseItem} ${isActive ? active : "text-salon-dark"}`
+              `${baseItem} ${isActive ? activeItem : "text-salon-dark"}`
             }
           >
             Home
@@ -69,7 +69,7 @@ export default function Navbar() {
           <NavLink
             to="/gallery"
             className={({ isActive }) =>
-              `${baseItem} ${isActive ? active : "text-salon-dark"}`
+              `${baseItem} ${isActive ? activeItem : "text-salon-dark"}`
             }
           >
             Gallery
@@ -77,7 +77,7 @@ export default function Navbar() {
           <NavLink
             to="/booking"
             className={({ isActive }) =>
-              `${baseItem} ${isActive ? active : "text-salon-dark"}`
+              `${baseItem} ${isActive ? activeItem : "text-salon-dark"}`
             }
           >
             Booking
@@ -87,7 +87,7 @@ export default function Navbar() {
             <NavLink
               to="/login"
               className={({ isActive }) =>
-                `${baseItem} ${isActive ? active : "text-salon-dark"}`
+                `${baseItem} ${isActive ? activeItem : "text-salon-dark"}`
               }
             >
               Login
@@ -97,7 +97,7 @@ export default function Navbar() {
               <NavLink
                 to="/profile"
                 className={({ isActive }) =>
-                  `${baseItem} ${isActive ? active : "text-salon-dark"}`
+                  `${baseItem} ${isActive ? activeItem : "text-salon-dark"}`
                 }
               >
                 Profile
@@ -143,7 +143,7 @@ export default function Navbar() {
               end
               onClick={() => setOpen(false)}
               className={({ isActive }) =>
-                `${baseItem} ${isActive ? active : "text-salon-dark"}`
+                `${baseItem} ${isActive ? activeItem : "text-salon-dark"}`
               }
             >
               Home
@@ -152,7 +152,7 @@ export default function Navbar() {
               to="/gallery"
               onClick={() => setOpen(false)}
               className={({ isActive }) =>
-                `${baseItem} ${isActive ? active : "text-salon-dark"}`
+                `${baseItem} ${isActive ? activeItem : "text-salon-dark"}`
               }
             >
               Gallery
@@ -161,7 +161,7 @@ export default function Navbar() {
               to="/booking"
               onClick={() => setOpen(false)}
               className={({ isActive }) =>
-                `${baseItem} ${isActive ? active : "text-salon-dark"}`
+                `${baseItem} ${isActive ? activeItem : "text-salon-dark"}`
               }
             >
               Booking
@@ -172,7 +172,7 @@ export default function Navbar() {
                 to="/login"
                 onClick={() => setOpen(false)}
                 className={({ isActive }) =>
-                  `${baseItem} ${isActive ? active : "text-salon-dark"}`
+                  `${baseItem} ${isActive ? activeItem : "text-salon-dark"}`
                 }
               >
                 Login
@@ -183,7 +183,7 @@ export default function Navbar() {
                   to="/profile"
                   onClick={() => setOpen(false)}
                   className={({ isActive }) =>
-                    `${baseItem} ${isActive ? active : "text-salon-dark"}`
+                    `${baseItem} ${isActive ? activeItem : "text-salon-dark"}`
                   }
                 >
                   Profile

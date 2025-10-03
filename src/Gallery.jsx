@@ -61,7 +61,8 @@ export default function Gallery() {
       <header className="mb-6">
         <h1 className="section-title">Style Gallery</h1>
         <p className="text-center text-salon-dark/70">
-          Browse services by category, compare prices &amp; durations, and pick your favorite.
+          Browse services by category, compare prices &amp; durations, and pick your
+          favorite.
         </p>
       </header>
 

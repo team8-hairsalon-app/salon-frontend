@@ -11,7 +11,8 @@ export default function Home() {
             Look your best with {SALON.name}
           </h1>
           <p className="mt-3 text-salon-dark/70">
-            Book braids, cuts, color and styling with our friendly team. Easy online booking, fair pricing, and great vibes.
+            Book braids, cuts, color and styling with our friendly team. Easy online
+            booking, fair pricing, and great vibes.
           </p>
 
           <div className="mt-6 flex flex-wrap gap-3">
@@ -30,28 +31,26 @@ export default function Home() {
               Browse styles
             </Link>
           </div>
+
+          {/* quick value bullets */}
+          <ul className="mt-6 flex flex-wrap gap-6 text-sm text-salon-dark/60">
+            <li>✓ Master stylists</li>
+            <li>✓ Premium products</li>
+            <li>✓ Personalized service</li>
+          </ul>
         </div>
 
-        <div className="rounded-3xl overflow-hidden border border-rose-100">
-          <img
-            className="w-full h-64 object-cover"
-            src="https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=1600&auto=format&fit=crop"
-            alt="Stylist working in the salon"
-            loading="lazy"
-          />
-        </div>
-      </section>
-
-      {/* Value props */}
-      <section className="mt-12 grid sm:grid-cols-3 gap-4">
-        {["Master stylists", "Premium products", "Personalized service"].map((t) => (
-          <div key={t} className="card flex items-center gap-3">
-            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 text-sm">
-              ✓
-            </span>
-            <p className="text-salon-dark">{t}</p>
+        <div className="relative">
+          <div className="absolute -inset-4 rounded-3xl bg-rose-100/40 blur-2xl" />
+          <div className="relative rounded-3xl overflow-hidden shadow-xl ring-1 ring-rose-100">
+            <img
+              className="h-[360px] w-full object-cover"
+              src="https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=1600&auto=format&fit=crop"
+              alt="Stylist working in the salon"
+              loading="lazy"
+            />
           </div>
-        ))}
+        </div>
       </section>
 
       {/* Visit & Contact */}
@@ -69,9 +68,7 @@ export default function Home() {
               {SALON.address}
             </a>
           </p>
-          <p className="mt-1 text-sm text-salon-dark/60">
-            Parking available on site.
-          </p>
+          <p className="mt-1 text-sm text-salon-dark/60">Parking available on site.</p>
         </div>
 
         <div className="card">
