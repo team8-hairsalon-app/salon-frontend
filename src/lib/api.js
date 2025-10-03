@@ -21,7 +21,8 @@ export const api = {
     if (sort === "price_asc") data.sort((a, b) => a.priceMin - b.priceMin);
     if (sort === "price_desc") data.sort((a, b) => b.priceMax - a.priceMax);
     if (sort === "duration") data.sort((a, b) => a.durationMins - b.durationMins);
-    if (sort === "popular") data.sort((a, b) => (b.ratingAvg ?? 0) - (a.ratingAvg ?? 0));
+    if (sort === "popular")
+      data.sort((a, b) => (b.ratingAvg ?? 0) - (a.ratingAvg ?? 0));
 
     return data;
   },
