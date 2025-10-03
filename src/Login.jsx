@@ -1,9 +1,12 @@
 import { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { toast } from "react-hot-toast";   // ✅ correct import
+import { authApi } from "./lib/authApi";
 
 const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function Login() {
+  const navigate = useNavigate();
   const [form, setForm] = useState({ email: "", password: "" });
   const [showPw, setShowPw] = useState(false);
   const [touched, setTouched] = useState({});
@@ -19,17 +22,30 @@ export default function Login() {
 
   const isValid = Object.keys(errors).length === 0;
 
-  const onChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+  const onChange = (e) =>
+    setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
   const onBlur = (e) => setTouched((t) => ({ ...t, [e.target.name]: true }));
 
   async function handleSubmit(e) {
     e.preventDefault();
     if (!isValid) return;
+    try {
+      await authApi.login({ email: form.email, password: form.password });
 
-    // Placeholder: wire to real API when backend is ready
-    // const res = await authApi.login({ email: form.email, password: form.password });
+      // store user in localStorage
+      localStorage.setItem("user_email", form.email);
 
-    alert(`Logged in as ${form.email} (placeholder)`);
+      // ✅ toast on success
+      toast.success("Signed in successfully!");
+
+      // redirect
+      navigate("/booking");
+    } catch (err) {
+      console.error(err);
+
+      // ❌ toast on error
+      toast.error("Login failed. Check your credentials.");
+    }
   }
 
   return (
@@ -55,7 +71,11 @@ export default function Login() {
               onChange={onChange}
               onBlur={onBlur}
               className={`mt-1 w-full rounded-xl border px-3 py-2 outline-none transition
-                ${errors.email && touched.email ? "border-rose-300 ring-2 ring-rose-100" : "border-rose-200 focus:ring-2 focus:ring-rose-200"}`}
+                ${
+                  errors.email && touched.email
+                    ? "border-rose-300 ring-2 ring-rose-100"
+                    : "border-rose-200 focus:ring-2 focus:ring-rose-200"
+                }`}
               placeholder="you@example.com"
             />
             {errors.email && touched.email && (
@@ -78,7 +98,11 @@ export default function Login() {
                 onChange={onChange}
                 onBlur={onBlur}
                 className={`w-full rounded-xl border px-3 py-2 pr-12 outline-none transition
-                  ${errors.password && touched.password ? "border-rose-300 ring-2 ring-rose-100" : "border-rose-200 focus:ring-2 focus:ring-rose-200"}`}
+                  ${
+                    errors.password && touched.password
+                      ? "border-rose-300 ring-2 ring-rose-100"
+                      : "border-rose-200 focus:ring-2 focus:ring-rose-200"
+                  }`}
                 placeholder="••••••••"
               />
               <button
@@ -100,7 +124,11 @@ export default function Login() {
             type="submit"
             disabled={!isValid}
             className={`w-full rounded-xl px-4 py-2 font-medium text-white transition
-              ${isValid ? "bg-salon-primary hover:shadow-md" : "bg-rose-300/60 cursor-not-allowed"}`}
+              ${
+                isValid
+                  ? "bg-salon-primary hover:shadow-md"
+                  : "bg-rose-300/60 cursor-not-allowed"
+              }`}
           >
             Sign in
           </button>
