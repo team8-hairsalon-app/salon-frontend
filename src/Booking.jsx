@@ -1,6 +1,9 @@
 
 // salon-frontend/src/Booking.jsx
 
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+
 import { api } from "./lib/api";
 
 // src/Booking.jsx
@@ -144,22 +147,8 @@ export default function Booking() {
         appointment_time: appointmentISO,
         notes,
       };
-
-      await api.createAppointment(payload);
-
-      alert(`Booked: ${selectedStyle.name} on ${date} at ${time}`);
-
-      // reset form
-      setSelectedStyleId("");
-      setDate("");
-      setTime("");
-      setNotes("");
-      setCustomerName("");
-      setCustomerEmail("");
-    } catch (err) {
-      console.error(err);
-      alert("Failed to book appointment. See console for details.");
-    try {
+      
+      
       const appt = await appointmentsApi.create({
         styleId: selectedStyle.id,
         date,
@@ -170,6 +159,15 @@ export default function Booking() {
       toast.success(`Booked ${selectedStyle.name} on ${date} at ${time}!`);
       setCreatedApptId(appt.id);
       setConfirmOpen(true); // open two-button modal
+    
+      // reset form
+      setSelectedStyleId("");
+      setDate("");
+      setTime("");
+      setNotes("");
+      setCustomerName("");
+      setCustomerEmail("");
+
     } catch (err) {
       console.error(err);
       toast.error("Booking failed. Please try again.");
@@ -324,22 +322,17 @@ export default function Booking() {
               {/* Date */}
 
               <div>
-                <label className="block text-sm font-medium text-salon-dark">
-                  Date
-                </label>
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
+                <label className="block text-sm font-medium text-salon-dark">Date</label>
+                <DatePicker
+                  selected={date ? new Date(date) : null}
+                  onChange={(date) => setDate(date.toISOString().split("T")[0])}
+                  minDate={new Date()}
+                  placeholderText="Select a date"
                   className={`mt-1 w-full rounded-xl border px-3 py-2 outline-none transition ${
-                    errors.date
-                      ? "border-rose-300 ring-2 ring-rose-100"
-                      : "border-rose-200 focus:ring-2 focus:ring-rose-200"
+                    errors.date ? "border-rose-300 ring-2 ring-rose-100" : "border-rose-200 focus:ring-2 focus:ring-rose-200"
                   }`}
                 />
-                {errors.date && (
-                  <p className="text-xs text-rose-600 mt-1">{errors.date}</p>
-                )}
+                {errors.date && <p className="text-xs text-rose-600 mt-1">{errors.date}</p>}
               </div>
 
               {/* Time */}
@@ -509,4 +502,3 @@ export default function Booking() {
     </main>
   );
   }
-}
