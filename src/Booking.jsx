@@ -1,7 +1,13 @@
+
+// salon-frontend/src/Booking.jsx
+
+import { api } from "./lib/api";
+
 // src/Booking.jsx
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+
 
 import { stylesApi } from "./lib/stylesApi";
 import { appointmentsApi } from "./lib/appointmentsApi";
@@ -44,6 +50,11 @@ export default function Booking() {
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+
+  // new: customer details
+  const [customerEmail, setCustomerEmail] = useState("");
+
+
   // Post-create modal
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [createdApptId, setCreatedApptId] = useState(null);
@@ -80,6 +91,7 @@ export default function Booking() {
         (s) => bookingCategory === "all" || s.category === bookingCategory
       ),
     [styles, bookingCategory]
+
   );
 
   const selectedStyle = useMemo(
@@ -94,11 +106,22 @@ export default function Booking() {
     if (!customerName.trim()) e.customerName = "Please enter your name";
     if (!date) e.date = "Choose a date";
     if (!time) e.time = "Choose a time";
+
+    if (!customerName) e.customerName = "Your name is required";
+    if (!customerEmail || !/^\S+@\S+\.\S+$/.test(customerEmail))
+      e.customerEmail = "Enter a valid email";
+
+    // basic future date check
+
+
     if (date && new Date(`${date}T${time || "00:00"}`) < new Date()) {
       e.date = "Pick a future date/time";
     }
     return e;
-  }, [selectedStyleId, customerName, date, time]);
+
+  }, [selectedStyleId, date, time, customerName, customerEmail]);
+
+
 
   const isValid = Object.keys(errors).length === 0;
 
@@ -108,6 +131,34 @@ export default function Booking() {
     if (!isValid || !selectedStyle) return;
 
     setSubmitting(true);
+    try {
+
+      // build ISO datetime from selected date + time (local -> toISOString() converts to UTC)
+      const appointmentISO = new Date(`${date}T${time}`).toISOString();
+
+      const payload = {
+        customer_name: customerName,
+        customer_email: customerEmail,
+        style_id: selectedStyle.id,
+        style_name: selectedStyle.name,
+        appointment_time: appointmentISO,
+        notes,
+      };
+
+      await api.createAppointment(payload);
+
+      alert(`Booked: ${selectedStyle.name} on ${date} at ${time}`);
+
+      // reset form
+      setSelectedStyleId("");
+      setDate("");
+      setTime("");
+      setNotes("");
+      setCustomerName("");
+      setCustomerEmail("");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to book appointment. See console for details.");
     try {
       const appt = await appointmentsApi.create({
         styleId: selectedStyle.id,
@@ -122,6 +173,7 @@ export default function Booking() {
     } catch (err) {
       console.error(err);
       toast.error("Booking failed. Please try again.");
+
     } finally {
       setSubmitting(false);
     }
@@ -239,30 +291,38 @@ export default function Booking() {
           {/* name + date/time */}
           <Section title="2) Your details & time">
             <form className="grid sm:grid-cols-2 gap-5" onSubmit={handleSubmit}>
-              {/* Name */}
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-salon-dark">
-                  Your name
-                </label>
-                <input
-                  type="text"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="Jane Doe"
-                  className={`mt-1 w-full rounded-xl border px-3 py-2 outline-none transition ${
-                    errors.customerName
-                      ? "border-rose-300 ring-2 ring-rose-100"
-                      : "border-rose-200 focus:ring-2 focus:ring-rose-200"
-                  }`}
-                />
-                {errors.customerName && (
-                  <p className="text-xs text-rose-600 mt-1">
-                    {errors.customerName}
-                  </p>
-                )}
+
+              {/* Customer name/email */}
+              <div className="sm:col-span-2 grid sm:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-sm font-medium text-salon-dark">Full name</label>
+                  <input
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    className="mt-1 w-full rounded-xl border px-3 py-2 outline-none"
+                    placeholder="Your name"
+                    required
+                  />
+                  {errors.customerName && <p className="text-xs text-rose-600 mt-1">{errors.customerName}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-salon-dark">Email</label>
+                  <input
+                    type="email"
+                    value={customerEmail}
+                    onChange={(e) => setCustomerEmail(e.target.value)}
+                    className="mt-1 w-full rounded-xl border px-3 py-2 outline-none"
+                    placeholder="you@example.com"
+                    required
+                  />
+                  {errors.customerEmail && <p className="text-xs text-rose-600 mt-1">{errors.customerEmail}</p>}
+                </div>
               </div>
 
+
               {/* Date */}
+
               <div>
                 <label className="block text-sm font-medium text-salon-dark">
                   Date
@@ -448,4 +508,5 @@ export default function Booking() {
       )}
     </main>
   );
+  }
 }
