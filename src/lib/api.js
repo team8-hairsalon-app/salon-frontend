@@ -3,6 +3,7 @@ const BASE_URL = "http://127.0.0.1:8000/api";
 
 export const api = {
   async listStyles({ q = "", category = "all", sort = "popular" } = {}) {
+
     const params = new URLSearchParams();
     if (q) params.append("q", q);
     if (category !== "all") params.append("category", category);
@@ -32,4 +33,6 @@ export const api = {
     if (!res.ok) throw new Error("Failed to create appointment");
     return await res.json();
   },
+
+
 };

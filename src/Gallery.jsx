@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import StyleCard from "./components/StyleCard";
-import { api } from "./lib/api";
+import { stylesApi } from "./lib/stylesApi";
 
 const categories = [
   { id: "all", label: "All" },
@@ -18,33 +19,41 @@ const sorts = [
 ];
 
 export default function Gallery() {
+  const navigate = useNavigate();
+
   const [q, setQ] = useState("");
   const [category, setCategory] = useState("all");
   const [sort, setSort] = useState("popular");
   const [styles, setStyles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
-  const empty = useMemo(() => !loading && styles.length === 0, [loading, styles]);
+  const empty = useMemo(
+    () => !loading && !loadError && styles.length === 0,
+    [loading, loadError, styles]
+  );
 
-  useEffect(() => {
-    let alive = true;
+  const fetchStyles = useCallback(async () => {
     setLoading(true);
-    api
-      .listStyles({ q, category, sort })
-      .then((data) => {
-        if (alive) setStyles(data);
-      })
-      .finally(() => alive && setLoading(false));
-    return () => {
-      alive = false;
-    };
+    setLoadError("");
+    try {
+      const items = await stylesApi.list({ q, category, sort });
+      setStyles(items);
+    } catch (err) {
+      console.error("Failed to load styles:", err);
+      setStyles([]);
+      setLoadError("Couldn’t load styles from the server.");
+    } finally {
+      setLoading(false);
+    }
   }, [q, category, sort]);
 
+  useEffect(() => {
+    fetchStyles();
+  }, [fetchStyles]);
+
   function handleSelect(style) {
-    // Navigate to booking prefilled later if you want:
-    // navigate(`/booking?styleId=${style.id}`)
-    // For now, just a nice toast:
-    alert(`Selected "${style.name}" — go to Booking to confirm.`);
+    navigate(`/booking?styleId=${encodeURIComponent(style.id)}`);
   }
 
   return (
@@ -52,7 +61,8 @@ export default function Gallery() {
       <header className="mb-6">
         <h1 className="section-title">Style Gallery</h1>
         <p className="text-center text-salon-dark/70">
-          Browse services by category, compare prices & durations, and pick your favorite.
+          Browse services by category, compare prices &amp; durations, and pick your
+          favorite.
         </p>
       </header>
 
@@ -101,7 +111,7 @@ export default function Gallery() {
         </div>
       </div>
 
-      {/* Grid */}
+      {/* Grid / states */}
       {loading ? (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {[...Array(6)].map((_, i) => (
@@ -112,6 +122,8 @@ export default function Gallery() {
             </div>
           ))}
         </div>
+      ) : loadError ? (
+        <div className="text-center text-rose-600">{loadError}</div>
       ) : empty ? (
         <div className="text-center text-salon-dark/70">
           No styles match your search. Try a different term or category.
