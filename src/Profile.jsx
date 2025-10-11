@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import FormField from './components/FormField';
 import { validateEmail, passwordStrength, validateDOB } from "./lib/validators";
-
+import { useEffect } from 'react';
+import { appointmentsApi } from './lib/appointmentsApi';
 
 const initialUser = {
   avatarUrl: '',
@@ -19,6 +20,8 @@ export default function Profile() {
   const [form, setForm] = useState(user);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const [bookings, setBookings] = useState([]);
+  const [loadingBookings, setLoadingBookings] = useState(true);
 
   const fullName = `${user.firstName} ${user.lastName}`.trim();
 
@@ -64,6 +67,21 @@ export default function Profile() {
     setErrors({});
     setEditing(false);
   };
+
+  useEffect(() => {
+  async function fetchBookings() {
+    try {
+      const data = await appointmentsApi.upcoming(); // New helper method
+      setUpcoming(data);
+    } catch (err) {
+      console.error("Failed to fetch upcoming bookings", err);
+    } finally {
+      setLoadingBookings(false);
+    }
+  }
+
+  fetchBookings();
+}, []);
 
   return (
     <div className="mx-auto max-w-3xl p-6 space-y-6">
@@ -126,5 +144,35 @@ export default function Profile() {
         </form>
       )}
     </div>
-  );
+  )
+      {/* Upcoming Bookings */}
+      <section className="rounded-xl border border-gray-200 bg-white/60 backdrop-blur p-6 shadow-sm">
+        <h2 className="text-xl font-semibold mb-4">Upcoming Bookings</h2>
+
+        {loadingBookings ? (
+          <p>Loading your bookings...</p>
+        ) : upcoming.length === 0 ? (
+          <p className="text-gray-600">You have no upcoming bookings.</p>
+        ) : (
+          <ul className="divide-y divide-gray-200">
+            {bookings.map((b) => (
+              <li key={b.id} className="py-3">
+                <div className="flex justify-between">
+                  <div>
+                    <p className="font-medium">{b.style_name}</p>
+                    <p className="text-sm text-gray-600">
+                      {new Date(b.appointment_time).toLocaleString()}
+                    </p>
+                  </div>
+                  <span className="text-rose-600 font-semibold">
+                    {b.status || "Scheduled"}
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+    </section>
+
+
 }

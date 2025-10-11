@@ -14,4 +14,8 @@ export const appointmentsApi = {
     const { data } = await http.get("/appointments/mine/");
     return data;
   },
+  async upcoming() {
+    const { data } = await http.get("/appointments/upcoming/");
+    return data;
+  }
 };
