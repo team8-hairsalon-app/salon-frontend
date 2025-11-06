@@ -1,7 +1,20 @@
 import { Link } from "react-router-dom";
+import { useEffect } from "react";
+import { http } from "./lib/http";
+
 
 export default function Home() {
-  return (
+    useEffect(() => {
+    http.get("ping/")
+      .then(res => {
+        console.log("✅ Backend connected:", res.data);
+      })
+      .catch(err => {
+        console.error("❌ Backend error:", err);
+      });
+  }, []);
+
+    return (
     <main className="bg-gradient-to-b from-salon-beige to-white">
       <section className="mx-auto max-w-6xl px-4 py-16 grid md:grid-cols-2 gap-10 items-center">
         {/* Copy */}

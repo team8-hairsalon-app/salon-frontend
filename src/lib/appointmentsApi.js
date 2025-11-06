@@ -1,12 +1,10 @@
 import { http } from "./http";
 
 export const appointmentsApi = {
-  async create({ style_id, datetime, notes }) {
-    const { data } = await http.post("/appointments/", {
-      style_id,
-      datetime,
-      notes,
-    });
+  async create(payload) {
+    // payload must include:
+    // customer_name, customer_email, style_id, style_name, appointment_time (ISO), notes?
+    const { data } = await http.post("/appointments/", payload);
     return data;
   },
 
@@ -14,8 +12,14 @@ export const appointmentsApi = {
     const { data } = await http.get("/appointments/mine/");
     return data;
   },
+
   async upcoming() {
     const { data } = await http.get("/appointments/upcoming/");
     return data;
-  }
+  },
+
+  async startCheckout(appointmentId) {
+    const { data } = await http.post(`/appointments/${appointmentId}/start_checkout/`);
+    return data; // { url: string|null }
+  },
 };
