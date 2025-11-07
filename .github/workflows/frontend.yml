@@ -1,0 +1,27 @@
+name: Frontend CI
+
+on:
+  push:
+    paths:
+      - "**/*"
+      - ".github/workflows/frontend.yml"
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install & build
+        env:
+          VITE_API_BASE_URL: "http://localhost:8000/api"
+        run: |
+          npm ci
+          npm run build
