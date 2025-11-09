@@ -1,6 +1,7 @@
 import { NavLink, Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { SALON } from "../lib/config";
+import { useAuth } from "../lib/auth.jsx";
 
 const baseItem =
   "px-3 py-2 rounded-full text-sm font-medium transition hover:bg-rose-50 hover:text-salon-primary";
@@ -9,38 +10,39 @@ const activeItem =
 
 export default function Navbar() {
   const navigate = useNavigate();
+  const auth = useAuth();
+
   const [open, setOpen] = useState(false);
-  const [isAuthed, setIsAuthed] = useState(false);
   const [greetingName, setGreetingName] = useState("");
 
+  // Derive greeting from auth/user, fall back to saved fields
   useEffect(() => {
-    const syncAuth = () => {
-      const token = localStorage.getItem("access_token");
-      const first = localStorage.getItem("user_first_name");
-      const email = localStorage.getItem("user_email");
-      setIsAuthed(!!token);
+    const sync = () => {
+      const first = auth?.user?.firstName || localStorage.getItem("user_first_name") || "";
+      const email = auth?.user?.email || localStorage.getItem("user_email") || "";
       setGreetingName(first || (email ? email.split("@")[0] : ""));
     };
+    sync();
+    window.addEventListener("auth-updated", sync);
+    return () => window.removeEventListener("auth-updated", sync);
+  }, [auth?.user]);
 
-    // initial
-    syncAuth();
-
-    // react to changes from other tabs / code
-    window.addEventListener("storage", syncAuth);
-    window.addEventListener("auth-updated", syncAuth);
-
-    return () => {
-      window.removeEventListener("storage", syncAuth);
-      window.removeEventListener("auth-updated", syncAuth);
-    };
-  }, []);
-
-  function handleLogout() {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
-    window.dispatchEvent(new Event("auth-updated"));
+  async function handleLogout() {
+    await auth?.logout?.();
     navigate("/");
   }
+
+  const Item = ({ to, end, children }) => (
+    <NavLink
+      to={to}
+      end={end}
+      className={({ isActive }) =>
+        `${baseItem} ${isActive ? activeItem : "text-salon-dark"}`
+      }
+    >
+      {children}
+    </NavLink>
+  );
 
   return (
     <header className="sticky top-0 z-40 bg-white/80 backdrop-blur border-b border-rose-100">
@@ -55,53 +57,17 @@ export default function Navbar() {
           </span>
         </Link>
 
-        {/* Desktop nav */}
+        {/* Desktop */}
         <nav className="hidden md:flex items-center gap-1">
-          <NavLink
-            to="/"
-            end
-            className={({ isActive }) =>
-              `${baseItem} ${isActive ? activeItem : "text-salon-dark"}`
-            }
-          >
-            Home
-          </NavLink>
-          <NavLink
-            to="/gallery"
-            className={({ isActive }) =>
-              `${baseItem} ${isActive ? activeItem : "text-salon-dark"}`
-            }
-          >
-            Gallery
-          </NavLink>
-          <NavLink
-            to="/booking"
-            className={({ isActive }) =>
-              `${baseItem} ${isActive ? activeItem : "text-salon-dark"}`
-            }
-          >
-            Booking
-          </NavLink>
+          <Item to="/" end>Home</Item>
+          <Item to="/gallery">Gallery</Item>
+          <Item to="/booking">Booking</Item>
 
-          {!isAuthed ? (
-            <NavLink
-              to="/login"
-              className={({ isActive }) =>
-                `${baseItem} ${isActive ? activeItem : "text-salon-dark"}`
-              }
-            >
-              Login
-            </NavLink>
+          {!auth?.isAuthed ? (
+            <Item to="/login">Login</Item>
           ) : (
             <>
-              <NavLink
-                to="/profile"
-                className={({ isActive }) =>
-                  `${baseItem} ${isActive ? activeItem : "text-salon-dark"}`
-                }
-              >
-                Profile
-              </NavLink>
+              <Item to="/profile">Profile</Item>
               <span className="px-3 py-2 text-sm text-salon-dark/70">
                 {greetingName ? `Welcome, ${greetingName}` : "Welcome"}
               </span>
@@ -138,64 +104,20 @@ export default function Navbar() {
       {open && (
         <div id="mobile-menu" className="md:hidden border-t border-rose-100">
           <nav className="mx-auto max-w-6xl px-4 py-3 flex flex-col gap-1">
-            <NavLink
-              to="/"
-              end
-              onClick={() => setOpen(false)}
-              className={({ isActive }) =>
-                `${baseItem} ${isActive ? activeItem : "text-salon-dark"}`
-              }
-            >
-              Home
-            </NavLink>
-            <NavLink
-              to="/gallery"
-              onClick={() => setOpen(false)}
-              className={({ isActive }) =>
-                `${baseItem} ${isActive ? activeItem : "text-salon-dark"}`
-              }
-            >
-              Gallery
-            </NavLink>
-            <NavLink
-              to="/booking"
-              onClick={() => setOpen(false)}
-              className={({ isActive }) =>
-                `${baseItem} ${isActive ? activeItem : "text-salon-dark"}`
-              }
-            >
-              Booking
-            </NavLink>
+            <Item to="/" end>Home</Item>
+            <Item to="/gallery">Gallery</Item>
+            <Item to="/booking">Booking</Item>
 
-            {!isAuthed ? (
-              <NavLink
-                to="/login"
-                onClick={() => setOpen(false)}
-                className={({ isActive }) =>
-                  `${baseItem} ${isActive ? activeItem : "text-salon-dark"}`
-                }
-              >
-                Login
-              </NavLink>
+            {!auth?.isAuthed ? (
+              <Item to="/login">Login</Item>
             ) : (
               <>
-                <NavLink
-                  to="/profile"
-                  onClick={() => setOpen(false)}
-                  className={({ isActive }) =>
-                    `${baseItem} ${isActive ? activeItem : "text-salon-dark"}`
-                  }
-                >
-                  Profile
-                </NavLink>
+                <Item to="/profile">Profile</Item>
                 <span className="px-3 py-2 text-sm text-salon-dark/70">
                   {greetingName ? `Welcome, ${greetingName}` : "Welcome"}
                 </span>
                 <button
-                  onClick={() => {
-                    setOpen(false);
-                    handleLogout();
-                  }}
+                  onClick={() => { setOpen(false); handleLogout(); }}
                   className="px-3 py-2 rounded-full text-sm font-medium bg-rose-50 text-salon-dark hover:bg-rose-100 transition text-left"
                 >
                   Logout
