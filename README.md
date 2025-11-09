@@ -32,11 +32,12 @@ Then open:
 http://localhost:5173
 
 ### 5) Available Scriptst
+```bash
 Command	           Description
 npm run dev	        Start local dev server (with auto-reload)
 npm run build	     Production optimized build
 npm run preview	  Preview the built app locally
-
+```
 ### 6) Project Structure
 ```bash
 salon-frontend/
@@ -67,10 +68,11 @@ salon-frontend/
 - Smooth navigation with react-router
   
 ### 8) Troubleshooting
+```bash
 Issue	                          Fix
 API requests                    returning 404	Ensure backend is running & base URL in .env is correct
 Stripe checkout not appearing	  Confirm VITE_STRIPE_PUBLIC_KEY is correct and dashboard is in test mode
 Auth not persisting	            Make sure localStorage domain matches site URL
-
+```
 ### 9) Deployment
 Vercel → React Frontend
