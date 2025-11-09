@@ -25,7 +25,6 @@ VITE_API_BASE_URL=http://127.0.0.1:8000/api
 VITE_STRIPE_PUBLIC_KEY=pk_test_XXXXXXXXXXXXXXXXXXXXXXXX
 
 ### 4) Run in Development Mode
-Open `psql` and run:
 ```bash
 npm run dev
 ```
@@ -33,9 +32,9 @@ Then open:
 http://localhost:5173
 
 ### 5) Available Scriptst
-Command	          Description
-npm run dev	      Start local dev server (with auto-reload)
-npm run build	    Production optimized build
+Command	           Description
+npm run dev	        Start local dev server (with auto-reload)
+npm run build	     Production optimized build
 npm run preview	  Preview the built app locally
 
 ### 6) Project Structure
