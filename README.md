@@ -35,8 +35,8 @@ http://localhost:5173
 ```bash
 Command	           Description
 npm run dev	        Start local dev server (with auto-reload)
-npm run build	     Production optimized build
-npm run preview	  Preview the built app locally
+npm run build	    Production optimized build
+npm run preview	   Preview the built app locally
 ```
 ### 6) Project Structure
 ```bash
