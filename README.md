@@ -69,9 +69,9 @@ salon-frontend/
   
 ### 8) Troubleshooting
 ```bash
-Issue	                          Fix
+Issue	                         Fix
 API requests                     returning 404	Ensure backend is running & base URL in .env is correct
-Stripe checkout not appearing	  Confirm VITE_STRIPE_PUBLIC_KEY is correct and dashboard is in test mode
+Stripe checkout not appearing	 Confirm VITE_STRIPE_PUBLIC_KEY is correct and dashboard is in test mode
 Auth not persisting	             Make sure localStorage domain matches site URL
 ```
 ### 9) Deployment
