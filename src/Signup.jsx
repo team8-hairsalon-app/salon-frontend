@@ -1,10 +1,13 @@
 import { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
+import { authApi } from "./lib/authApi";
 
 const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const pwStrongRe = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d).{8,}$/; // 8+, upper, lower, number
+const pwStrongRe = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d).{8,}$/;
 
 export default function Signup() {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -16,6 +19,7 @@ export default function Signup() {
   const [showPw, setShowPw] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [touched, setTouched] = useState({});
+  const [submitting, setSubmitting] = useState(false);
 
   const errors = useMemo(() => {
     const e = {};
@@ -34,23 +38,42 @@ export default function Signup() {
 
   const isValid = Object.keys(errors).length === 0;
 
-  const onChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+  const onChange = (e) =>
+    setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
   const onBlur = (e) => setTouched((t) => ({ ...t, [e.target.name]: true }));
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!isValid) return;
+    if (!isValid || submitting) return;
 
-    // Placeholder: integrate with backend when available
-    // const res = await authApi.register({
-    //   first_name: form.firstName,
-    //   last_name: form.lastName,
-    //   email: form.email,
-    //   password: form.password,
-    //   dob: form.dob,
-    // });
+    setSubmitting(true);
+    try {
+      await authApi.register({
+        first_name: form.firstName,
+        last_name: form.lastName,
+        email: form.email,
+        password: form.password,
+        dob: form.dob,
+      });
 
-    alert(`Welcome, ${form.firstName}! (placeholder signup)`);
+      // Save for greeting convenience on next login
+      localStorage.setItem("user_first_name", form.firstName);
+      localStorage.setItem("user_email", form.email);
+
+      toast.success("Account created! Please sign in.");
+      navigate("/login", { replace: true });
+    } catch (err) {
+      // If backend says email exists, redirect to login with a hint
+      const msg = (err?.response?.data && JSON.stringify(err.response.data)) || "Sign up failed.";
+      if (msg.toLowerCase().includes("already") || msg.toLowerCase().includes("exists")) {
+        toast.error("An account with this email already exists. Please sign in.");
+        navigate("/login", { replace: true });
+      } else {
+        toast.error("Sign up failed. Please try again.");
+      }
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -62,7 +85,6 @@ export default function Signup() {
         </p>
 
         <form className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-5" onSubmit={handleSubmit} noValidate>
-          {/* First name */}
           <div className="col-span-1">
             <label htmlFor="firstName" className="block text-sm font-medium text-salon-dark">
               First name
@@ -82,7 +104,6 @@ export default function Signup() {
             )}
           </div>
 
-          {/* Last name */}
           <div className="col-span-1">
             <label htmlFor="lastName" className="block text-sm font-medium text-salon-dark">
               Last name
@@ -102,7 +123,6 @@ export default function Signup() {
             )}
           </div>
 
-          {/* Email */}
           <div className="md:col-span-2">
             <label htmlFor="email" className="block text-sm font-medium text-salon-dark">
               Email
@@ -124,7 +144,6 @@ export default function Signup() {
             )}
           </div>
 
-          {/* Password */}
           <div className="col-span-1">
             <label htmlFor="password" className="block text-sm font-medium text-salon-dark">
               Password
@@ -157,7 +176,6 @@ export default function Signup() {
             </p>
           </div>
 
-          {/* Confirm password */}
           <div className="col-span-1">
             <label htmlFor="confirm" className="block text-sm font-medium text-salon-dark">
               Confirm password
@@ -187,7 +205,6 @@ export default function Signup() {
             )}
           </div>
 
-          {/* DOB */}
           <div className="md:col-span-2">
             <label htmlFor="dob" className="block text-sm font-medium text-salon-dark">
               Date of birth
@@ -207,15 +224,14 @@ export default function Signup() {
             )}
           </div>
 
-          {/* Submit */}
           <div className="md:col-span-2">
             <button
               type="submit"
-              disabled={!isValid}
+              disabled={!isValid || submitting}
               className={`w-full rounded-xl px-4 py-2 font-medium text-white transition
-                ${isValid ? "bg-salon-primary hover:shadow-md" : "bg-rose-300/60 cursor-not-allowed"}`}
+                ${isValid && !submitting ? "bg-salon-primary hover:shadow-md" : "bg-rose-300/60 cursor-not-allowed"}`}
             >
-              Create account
+              {submitting ? "Creating…" : "Create account"}
             </button>
           </div>
         </form>
