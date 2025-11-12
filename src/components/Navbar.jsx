@@ -1,3 +1,4 @@
+// src/components/Navbar.jsx
 import { NavLink, Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { SALON } from "../lib/config";
@@ -15,7 +16,6 @@ export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [greetingName, setGreetingName] = useState("");
 
-  // Derive greeting from auth/user, fall back to saved fields
   useEffect(() => {
     const sync = () => {
       const first = auth?.user?.firstName || localStorage.getItem("user_first_name") || "";
@@ -81,13 +81,7 @@ export default function Navbar() {
           )}
         </nav>
 
-        {/* CTA */}
-        <Link
-          to="/booking"
-          className="hidden md:inline-flex items-center gap-2 rounded-full bg-salon-primary px-4 py-2 text-white shadow-sm hover:shadow-md transition"
-        >
-          Book Now
-        </Link>
+        {/* (CTA removed) */}
 
         {/* Mobile toggle */}
         <button
