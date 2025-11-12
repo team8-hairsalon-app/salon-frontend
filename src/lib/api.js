@@ -1,38 +1,29 @@
-
-const BASE_URL = "http://127.0.0.1:8000/api";
+import { mockStyles } from "./mockStyles";
 
 export const api = {
   async listStyles({ q = "", category = "all", sort = "popular" } = {}) {
+    // simulate network
+    await new Promise((r) => setTimeout(r, 150));
 
-    const params = new URLSearchParams();
-    if (q) params.append("q", q);
-    if (category !== "all") params.append("category", category);
-    if (sort) params.append("sort", sort);
+    let data = [...mockStyles];
 
-    const res = await fetch(`${BASE_URL}/styles/?${params.toString()}`);
-    if (!res.ok) throw new Error("Failed to fetch styles");
-    const data = await res.json();
+    if (category !== "all") {
+      data = data.filter((s) => s.category === category);
+    }
+    if (q.trim()) {
+      const term = q.toLowerCase();
+      data = data.filter(
+        (s) =>
+          s.name.toLowerCase().includes(term) ||
+          s.category.toLowerCase().includes(term)
+      );
+    }
+    if (sort === "price_asc") data.sort((a, b) => a.priceMin - b.priceMin);
+    if (sort === "price_desc") data.sort((a, b) => b.priceMax - a.priceMax);
+    if (sort === "duration") data.sort((a, b) => a.durationMins - b.durationMins);
+    if (sort === "popular")
+      data.sort((a, b) => (b.ratingAvg ?? 0) - (a.ratingAvg ?? 0));
+
     return data;
   },
-
-  async listAppointments() {
-    const res = await fetch(`${BASE_URL}/appointments/`);
-    if (!res.ok) throw new Error("Failed to fetch appointments");
-    const data = await res.json();
-    return data;
-  },
-
-  async createAppointment(appointment) {
-    const res = await fetch(`${BASE_URL}/appointments/`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(appointment),
-    });
-    if (!res.ok) throw new Error("Failed to create appointment");
-    return await res.json();
-  },
-
-
 };
