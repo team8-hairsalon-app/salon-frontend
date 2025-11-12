@@ -1,15 +1,18 @@
 import { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { toast } from "react-hot-toast";   // ✅ correct import
-import { authApi } from "./lib/authApi";
+import { toast } from "react-hot-toast";
+import { useAuth } from "./lib/auth.jsx";
 
 const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function Login() {
   const navigate = useNavigate();
+  const auth = useAuth();
+
   const [form, setForm] = useState({ email: "", password: "" });
   const [showPw, setShowPw] = useState(false);
   const [touched, setTouched] = useState({});
+  const [authError, setAuthError] = useState("");
 
   const errors = useMemo(() => {
     const e = {};
@@ -22,28 +25,24 @@ export default function Login() {
 
   const isValid = Object.keys(errors).length === 0;
 
-  const onChange = (e) =>
-    setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+  const onChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
   const onBlur = (e) => setTouched((t) => ({ ...t, [e.target.name]: true }));
 
   async function handleSubmit(e) {
     e.preventDefault();
     if (!isValid) return;
+    setAuthError("");
     try {
-      await authApi.login({ email: form.email, password: form.password });
-
-      // store user in localStorage
-      localStorage.setItem("user_email", form.email);
-
-      // ✅ toast on success
+      await auth.login({ email: form.email, password: form.password });
+      // Save friendly display if token didn't contain a name
+      if (!localStorage.getItem("user_first_name")) {
+        localStorage.setItem("user_first_name", form.email.split("@")[0]);
+      }
       toast.success("Signed in successfully!");
-
-      // redirect
       navigate("/booking");
     } catch (err) {
       console.error(err);
-
-      // ❌ toast on error
+      setAuthError("Login failed. Check your email or password.");
       toast.error("Login failed. Check your credentials.");
     }
   }
@@ -57,7 +56,6 @@ export default function Login() {
         </p>
 
         <form className="mt-6 space-y-5" onSubmit={handleSubmit} noValidate>
-          {/* Email */}
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-salon-dark">
               Email
@@ -70,12 +68,11 @@ export default function Login() {
               value={form.email}
               onChange={onChange}
               onBlur={onBlur}
-              className={`mt-1 w-full rounded-xl border px-3 py-2 outline-none transition
-                ${
-                  errors.email && touched.email
-                    ? "border-rose-300 ring-2 ring-rose-100"
-                    : "border-rose-200 focus:ring-2 focus:ring-rose-200"
-                }`}
+              className={`mt-1 w-full rounded-xl border px-3 py-2 outline-none transition ${
+                errors.email && touched.email
+                  ? "border-rose-300 ring-2 ring-rose-100"
+                  : "border-rose-200 focus:ring-2 focus:ring-rose-200"
+              }`}
               placeholder="you@example.com"
             />
             {errors.email && touched.email && (
@@ -83,7 +80,6 @@ export default function Login() {
             )}
           </div>
 
-          {/* Password */}
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-salon-dark">
               Password
@@ -97,12 +93,11 @@ export default function Login() {
                 value={form.password}
                 onChange={onChange}
                 onBlur={onBlur}
-                className={`w-full rounded-xl border px-3 py-2 pr-12 outline-none transition
-                  ${
-                    errors.password && touched.password
-                      ? "border-rose-300 ring-2 ring-rose-100"
-                      : "border-rose-200 focus:ring-2 focus:ring-rose-200"
-                  }`}
+                className={`w-full rounded-xl border px-3 py-2 pr-12 outline-none transition ${
+                  errors.password && touched.password
+                    ? "border-rose-300 ring-2 ring-rose-100"
+                    : "border-rose-200 focus:ring-2 focus:ring-rose-200"
+                }`}
                 placeholder="••••••••"
               />
               <button
@@ -119,16 +114,22 @@ export default function Login() {
             )}
           </div>
 
-          {/* Submit */}
+          {authError && (
+            <div className="text-sm text-rose-600">
+              {authError}{" "}
+              <Link to="/forgot" className="underline text-salon-primary">
+                Forgot password?
+              </Link>
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={!isValid}
-            className={`w-full rounded-xl px-4 py-2 font-medium text-white transition
-              ${
-                isValid
-                  ? "bg-salon-primary hover:shadow-md"
-                  : "bg-rose-300/60 cursor-not-allowed"
-              }`}
+            className={`w-full rounded-xl px-4 py-2 font-medium text-white transition ${
+              isValid ? "bg-salon-primary hover:shadow-md"
+                      : "bg-rose-300/60 cursor-not-allowed"
+            }`}
           >
             Sign in
           </button>
@@ -138,6 +139,12 @@ export default function Login() {
           New here?{" "}
           <Link to="/signup" className="font-medium text-salon-primary hover:underline">
             Create an account
+          </Link>
+        </p>
+
+        <p className="mt-2 text-center text-sm">
+          <Link to="/forgot" className="text-salon-primary underline">
+            Forgot password?
           </Link>
         </p>
       </div>
