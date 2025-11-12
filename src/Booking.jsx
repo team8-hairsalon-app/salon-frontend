@@ -1,7 +1,3 @@
-// salon-frontend/src/Booking.jsx
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
-
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -10,6 +6,11 @@ import { stylesApi } from "./lib/stylesApi";
 import { appointmentsApi } from "./lib/appointmentsApi";
 import { SALON } from "./lib/config";
 
+import DatePicker from "./components/DatePicker.jsx";
+import TimePicker from "./components/TimePicker.jsx";
+
+/* ---------------- helpers ---------------- */
+
 const categories = [
   { id: "all", label: "All" },
   { id: "braids", label: "Braids" },
@@ -17,6 +18,12 @@ const categories = [
   { id: "color", label: "Color" },
   { id: "styling", label: "Styling" },
 ];
+
+const isLoggedIn = () => !!localStorage.getItem("access_token");
+const firstNameFromLocal = () =>
+  (localStorage.getItem("user_first_name") || "").trim();
+const emailFromLocal = () =>
+  (localStorage.getItem("user_email") || "").trim();
 
 function Section({ title, children }) {
   return (
@@ -27,22 +34,77 @@ function Section({ title, children }) {
   );
 }
 
+// Salon working hours: Mon–Fri 09:00–19:00, Sat 09:00–18:00, Sun closed
+function slotsForDate(dateStr) {
+  if (!dateStr) return [];
+  const d = new Date(`${dateStr}T00:00:00`);
+  const dow = d.getDay();
+  if (dow === 0) return []; // Sunday
+
+  const openHour = 9;
+  const closeHour = dow === 6 ? 18 : 19;
+  const out = [];
+  for (let h = openHour; h < closeHour; h++) {
+    for (let m = 0; m < 60; m += 30) {
+      out.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+    }
+  }
+  return out;
+}
+
+// Stable browser-side dedupe key
+function bookingKey({ email, name, styleId, date, time }) {
+  const who = (email || name || "guest").toLowerCase().trim();
+  return `booking:${who}:${styleId}:${date}T${time}`;
+}
+
+/* ---------------- component ---------------- */
+
 export default function Booking() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Styles from backend
+  // auth snapshot
+  const [authed, setAuthed] = useState(isLoggedIn());
+  useEffect(() => {
+    const sync = () => setAuthed(isLoggedIn());
+    window.addEventListener("storage", sync);
+    window.addEventListener("auth-updated", sync);
+    return () => {
+      window.removeEventListener("storage", sync);
+      window.removeEventListener("auth-updated", sync);
+    };
+  }, []);
+
+  // Styles
   const [styles, setStyles] = useState([]);
   const [loadingStyles, setLoadingStyles] = useState(true);
   const [stylesError, setStylesError] = useState("");
 
-  // UI state
+  // UI selections
   const [bookingCategory, setBookingCategory] = useState("all");
   const [selectedStyleId, setSelectedStyleId] = useState("");
-  const [customerName, setCustomerName] = useState(
-    () => localStorage.getItem("user_first_name") || ""
-  );
-  const [customerEmail, setCustomerEmail] = useState("");
+
+  // Book as (guest/signed-in)
+  const [bookingAs, setBookingAs] = useState(authed ? "signedin" : "guest");
+  useEffect(() => {
+    if (authed) setBookingAs("signedin");
+  }, [authed]);
+
+  // Contact
+  const [customerName, setCustomerName] = useState(firstNameFromLocal());
+  const [customerEmail, setCustomerEmail] = useState(emailFromLocal());
+  const [customerPhone, setCustomerPhone] = useState("");
+
+  useEffect(() => {
+    if (bookingAs === "signedin") {
+      if (!customerName) setCustomerName(firstNameFromLocal());
+      if (!customerEmail) setCustomerEmail(emailFromLocal());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookingAs]);
+
+  // Booking fields
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [notes, setNotes] = useState("");
@@ -51,8 +113,12 @@ export default function Booking() {
   // Post-create modal
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [createdApptId, setCreatedApptId] = useState(null);
+  const [createdOwnedByUser, setCreatedOwnedByUser] = useState(false);
 
-  // Load styles and preselect from ?styleId=
+  // Taken slots from API
+  const [takenSlots, setTakenSlots] = useState([]);
+
+  // Fetch styles & honor ?styleId=
   const loadStyles = useCallback(async () => {
     setLoadingStyles(true);
     setStylesError("");
@@ -77,7 +143,7 @@ export default function Booking() {
     loadStyles();
   }, [loadStyles]);
 
-  // Filtered list by category
+  // Derived lists
   const visibleStyles = useMemo(
     () =>
       styles.filter(
@@ -91,95 +157,187 @@ export default function Booking() {
     [styles, selectedStyleId]
   );
 
-  // Form validation
+  // Time options: business hours minus "taken" from backend
+  const businessSlots = useMemo(() => slotsForDate(date), [date]);
+  const availableSlots = useMemo(
+    () => businessSlots.filter((t) => !takenSlots.includes(t)),
+    [businessSlots, takenSlots]
+  );
+
+  // Load taken slots whenever date + style change
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      setTakenSlots([]);
+      if (!date || !selectedStyleId) return;
+      try {
+        const taken = await appointmentsApi.getTakenSlots(date, selectedStyleId);
+        if (!ignore) setTakenSlots(taken);
+      } catch (err) {
+        console.error("Failed to load taken slots:", err);
+      }
+    })();
+    return () => {
+      ignore = true;
+    };
+  }, [date, selectedStyleId]);
+
+  // Validation
   const errors = useMemo(() => {
     const e = {};
     if (!selectedStyleId) e.style = "Please select a style";
     if (!customerName.trim()) e.customerName = "Please enter your name";
-    if (!customerEmail || !/^\S+@\S+\.\S+$/.test(customerEmail))
-      e.customerEmail = "Enter a valid email";
+
+    if (bookingAs === "guest") {
+      const email = (customerEmail || "").trim();
+      const phone = (customerPhone || "").trim();
+      if (!email && !phone) e.contact = "Provide an email or phone.";
+    }
+
     if (!date) e.date = "Choose a date";
     if (!time) e.time = "Choose a time";
-    if (date && new Date(`${date}T${time || "00:00"}`) < new Date()) {
+
+    if (date && time && new Date(`${date}T${time}`) < new Date()) {
       e.date = "Pick a future date/time";
     }
-    return e;
-  }, [selectedStyleId, customerName, customerEmail, date, time]);
 
+    if (date && time && availableSlots.length && !availableSlots.includes(time)) {
+      e.time = "That time was just booked. Pick another.";
+    }
+
+    if (selectedStyleId && date && time) {
+      const key = bookingKey({
+        email: (authed ? emailFromLocal() : customerEmail) || "",
+        name: customerName,
+        styleId: selectedStyleId,
+        date,
+        time,
+      });
+      if (localStorage.getItem(key)) {
+        e.duplicate = "You already booked this style at the same date/time.";
+      }
+    }
+
+    return e;
+  }, [
+    selectedStyleId,
+    customerName,
+    bookingAs,
+    customerEmail,
+    customerPhone,
+    date,
+    time,
+    authed,
+    availableSlots,
+  ]);
   const isValid = Object.keys(errors).length === 0;
 
-  // Submit booking
-  async function handleSubmit(e) {
-    e.preventDefault();
+  // Submit
+  async function handleSubmit(ev) {
+    ev.preventDefault();
     if (!isValid || !selectedStyle) return;
+
+    const dedupeKey = bookingKey({
+      email: (authed ? emailFromLocal() : customerEmail) || "",
+      name: customerName,
+      styleId: selectedStyle.id,
+      date,
+      time,
+    });
+    if (localStorage.getItem(dedupeKey)) {
+      toast.error("Duplicate booking blocked.");
+      return;
+    }
 
     setSubmitting(true);
     try {
-      // local date+time -> ISO string for backend
-      const appointmentISO = new Date(`${date}T${time}`).toISOString();
-
       const appt = await appointmentsApi.create({
-        customer_name: customerName,
-        customer_email: customerEmail,
-        style_id: selectedStyle.id,
-        style_name: selectedStyle.name,
-        appointment_time: appointmentISO,
-        notes: notes || "",
+        styleId: selectedStyle.id,
+        date,
+        time,
+        notes: notes || undefined,
+        contact_name: customerName || undefined,
+        contact_email: customerEmail || undefined,
+        contact_phone: customerPhone || undefined,
       });
 
-      toast.success(`Booked ${selectedStyle.name} on ${date} at ${time}!`);
+      localStorage.setItem(dedupeKey, String(Date.now()));
+      setCreatedOwnedByUser(isLoggedIn());
       setCreatedApptId(appt.id);
-      setConfirmOpen(true);
 
-      // reset form
-      setSelectedStyleId("");
-      setDate("");
-      setTime("");
-      setNotes("");
-      setCustomerName("");
-      setCustomerEmail("");
+      // Single toast only; shorter duration handled by global Toaster
+      toast.dismiss("booking-success");
+      toast.success(`Booked ${selectedStyle.name} on ${date} at ${time}!`, {
+        id: "booking-success",
+      });
+
+      setConfirmOpen(true);
     } catch (err) {
       console.error(err);
-      toast.error("Booking failed. Please try again.");
+      const status = err?.response?.status;
+      if (status === 409) toast.error("You already have that slot.");
+      else toast.error(err?.response?.data?.detail || "Booking failed.");
     } finally {
       setSubmitting(false);
     }
   }
 
-  // Modal actions
+  // Stripe flow
   async function handlePayOnline() {
     if (!createdApptId) return;
+    if (!isLoggedIn() || !createdOwnedByUser) {
+      toast("Please log in before paying online.");
+      navigate("/login", { replace: true, state: { from: "/booking" } });
+      return;
+    }
     try {
       const { url } = await appointmentsApi.startCheckout(createdApptId);
-      if (url) {
-        window.location.href = url; // Stripe Checkout
-      } else {
-        toast.error("Payment session not available yet.");
-      }
+      if (url) window.location.href = url;
+      else toast.error("Payment session not available yet.");
     } catch (err) {
       console.error(err);
-      toast.error("Could not start checkout.");
+      toast.error(
+        err?.response?.status === 403
+          ? "Not allowed to start checkout for this booking."
+          : "Could not start checkout."
+      );
     }
   }
 
+  // Pay in salon
   function handlePayInSalon() {
     setConfirmOpen(false);
-    toast.success(
-      "Your booking was successfully saved! You'll be notified for availability."
-    );
-    setTimeout(() => {
-      navigate("/", { replace: true });
-    }, 1600);
+    toast.success("Your booking was saved! See you soon!");
+
+    const first = (customerName || firstNameFromLocal() || "there").split(" ")[0];
+    const dtIso = `${date}T${time || "00:00"}`;
+    const params = new URLSearchParams({
+      first,
+      style: selectedStyle?.name || "Service",
+      dt: dtIso,
+    });
+    navigate(`/booking-received?${params.toString()}`, { replace: true });
   }
+
+  // Greeting
+  const greeting = (() => {
+    const fallback = firstNameFromLocal();
+    const first = (customerName || fallback || "").trim();
+    if (!first) return "Book an appointment";
+    const hr = new Date().getHours();
+    const greet =
+      hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening";
+    return `${greet}, ${first}`;
+  })();
 
   return (
     <main className="section">
-      <h1 className="section-title">Book an appointment</h1>
+      <h1 className="section-title">{greeting}</h1>
 
       <div className="grid lg:grid-cols-3 gap-8">
-        {/* LEFT: form */}
+        {/* LEFT */}
         <div className="lg:col-span-2 space-y-10">
-          {/* pick a service */}
+          {/* 1) Choose a style */}
           <Section title="1) Choose a style">
             <div className="flex justify-between items-center gap-3 mb-3 flex-wrap">
               <p className="text-sm text-salon-dark/70">
@@ -200,7 +358,7 @@ export default function Booking() {
 
             {loadingStyles ? (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {[...Array(6)].map((_, i) => (
+                {Array.from({ length: 6 }).map((_, i) => (
                   <div key={i} className="card animate-pulse">
                     <div className="h-36 w-full rounded-xl bg-rose-100/60" />
                     <div className="mt-3 h-4 w-2/3 bg-rose-100/60 rounded" />
@@ -255,89 +413,137 @@ export default function Booking() {
             )}
           </Section>
 
-          {/* name + date/time */}
+          {/* 2) Details & time */}
           <Section title="2) Your details & time">
             <form className="grid sm:grid-cols-2 gap-5" onSubmit={handleSubmit}>
-              {/* Customer name/email */}
-              <div className="sm:col-span-2 grid sm:grid-cols-2 gap-5">
-                <div>
-                  <label className="block text-sm font-medium text-salon-dark">
-                    Full name
-                  </label>
-                  <input
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    className="mt-1 w-full rounded-xl border px-3 py-2 outline-none"
-                    placeholder="Your name"
-                    required
-                  />
-                  {errors.customerName && (
-                    <p className="text-xs text-rose-600 mt-1">
-                      {errors.customerName}
-                    </p>
-                  )}
+              {/* Book as */}
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-salon-dark">
+                  Book as
+                </label>
+                <div className="mt-1 inline-flex rounded-full bg-rose-50 p-1 shadow-sm">
+                  <button
+                    type="button"
+                    onClick={() => setBookingAs("guest")}
+                    className={`px-4 py-1 rounded-full text-sm font-medium transition ${
+                      bookingAs === "guest"
+                        ? "bg-salon-primary text-white shadow"
+                        : "text-salon-dark hover:bg-white/60"
+                    }`}
+                  >
+                    Guest
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isLoggedIn()) setBookingAs("signedin");
+                      else navigate("/login");
+                    }}
+                    className={`px-4 py-1 rounded-full text-sm font-medium transition ${
+                      bookingAs === "signedin"
+                        ? "bg-salon-primary text-white shadow"
+                        : "text-salon-dark hover:bg-white/60"
+                    }`}
+                  >
+                    Signed-in
+                  </button>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-salon-dark">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={customerEmail}
-                    onChange={(e) => setCustomerEmail(e.target.value)}
-                    className="mt-1 w-full rounded-xl border px-3 py-2 outline-none"
-                    placeholder="you@example.com"
-                    required
-                  />
-                  {errors.customerEmail && (
-                    <p className="text-xs text-rose-600 mt-1">
-                      {errors.customerEmail}
-                    </p>
-                  )}
-                </div>
+                <p className="text-xs text-salon-dark/60 mt-1">
+                  Guests can book without creating an account.
+                </p>
               </div>
 
-              {/* Date */}
+              {/* Contact */}
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-salon-dark">
+                  Your name
+                </label>
+                <input
+                  type="text"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder="Jane Doe"
+                  className={`mt-1 w-full rounded-xl border px-3 py-2 outline-none transition ${
+                    errors.customerName
+                      ? "border-rose-300 ring-2 ring-rose-100"
+                      : "border-rose-200 focus:ring-2 focus:ring-rose-200"
+                  }`}
+                />
+                {errors.customerName && (
+                  <p className="text-xs text-rose-600 mt-1">
+                    {errors.customerName}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-salon-dark">
+                  Email {bookingAs === "guest"
+                    ? "(email or phone required)"
+                    : "(optional)"}
+                </label>
+                <input
+                  type="email"
+                  value={customerEmail}
+                  onChange={(e) => setCustomerEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="mt-1 w-full rounded-xl border border-rose-200 px-3 py-2 outline-none focus:ring-2 focus:ring-rose-200"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-salon-dark">
+                  Phone {bookingAs === "guest"
+                    ? "(email or phone required)"
+                    : "(optional)"}
+                </label>
+                <input
+                  type="tel"
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  placeholder="(704) 555-0123"
+                  className="mt-1 w-full rounded-xl border border-rose-200 px-3 py-2 outline-none focus:ring-2 focus:ring-rose-200"
+                />
+              </div>
+
+              {errors.contact && (
+                <p className="sm:col-span-2 text-xs text-rose-600">
+                  {errors.contact}
+                </p>
+              )}
+              {errors.duplicate && (
+                <p className="sm:col-span-2 text-xs text-rose-600">
+                  {errors.duplicate}
+                </p>
+              )}
+
+              {/* Date (Calendar) */}
               <div>
                 <label className="block text-sm font-medium text-salon-dark">
                   Date
                 </label>
                 <DatePicker
-                  selected={date ? new Date(date) : null}
-                  onChange={(d) => setDate(d.toISOString().split("T")[0])}
-                  minDate={new Date()}
-                  placeholderText="Select a date"
-                  className={`mt-1 w-full rounded-xl border px-3 py-2 outline-none transition ${
-                    errors.date
-                      ? "border-rose-300 ring-2 ring-rose-100"
-                      : "border-rose-200 focus:ring-2 focus:ring-rose-200"
-                  }`}
+                  value={date}
+                  onChange={(val) => {
+                    setDate(val);
+                    setTime("");
+                  }}
+                  disableSunday={true}
+                  disablePast={true}
+                  className="mt-1"
                 />
                 {errors.date && (
                   <p className="text-xs text-rose-600 mt-1">{errors.date}</p>
                 )}
               </div>
 
-              {/* Time */}
-              <div>
-                <label className="block text-sm font-medium text-salon-dark">
-                  Time
-                </label>
-                <input
-                  type="time"
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
-                  className={`mt-1 w-full rounded-xl border px-3 py-2 outline-none transition ${
-                    errors.time
-                      ? "border-rose-300 ring-2 ring-rose-100"
-                      : "border-rose-200 focus:ring-2 focus:ring-rose-200"
-                  }`}
-                />
-                {errors.time && (
-                  <p className="text-xs text-rose-600 mt-1">{errors.time}</p>
-                )}
-              </div>
+              {/* Time (available business hours minus taken slots) */}
+              <TimePicker
+                value={time}
+                onChange={setTime}
+                options={availableSlots}
+                disabled={!date}
+              />
 
               {/* Notes */}
               <div className="sm:col-span-2">
@@ -357,9 +563,9 @@ export default function Booking() {
               <div className="sm:col-span-2">
                 <button
                   type="submit"
-                  disabled={!isValid || submitting}
+                  disabled={!isValid || submitting || confirmOpen}
                   className={`w-full rounded-xl px-4 py-3 font-medium text-white transition ${
-                    isValid && !submitting
+                    isValid && !submitting && !confirmOpen
                       ? "bg-salon-primary hover:shadow-md"
                       : "bg-rose-300/60 cursor-not-allowed"
                   }`}
@@ -371,81 +577,85 @@ export default function Booking() {
           </Section>
         </div>
 
-        {/* RIGHT: summary + help pinned together */}
-        <aside className="lg:col-span-1">
-          <div className="sticky top-24 space-y-5">
-            <div className="card">
-              <h3 className="text-lg font-semibold text-salon-dark">
-                Booking summary
-              </h3>
-              <div className="mt-4 space-y-3 text-sm text-salon-dark/80">
-                <div className="flex justify-between">
-                  <span>Style</span>
-                  <span className="font-medium">
-                    {selectedStyle ? selectedStyle.name : "—"}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Name</span>
-                  <span className="font-medium">
-                    {customerName.trim() || "—"}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Date</span>
-                  <span className="font-medium">{date || "—"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Time</span>
-                  <span className="font-medium">{time || "—"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Est. duration</span>
-                  <span className="font-medium">
-                    {selectedStyle ? `${selectedStyle.durationMins} mins` : "—"}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Est. price</span>
-                  <span className="font-medium">
-                    {selectedStyle
-                      ? `$${selectedStyle.priceMin}–${selectedStyle.priceMax}`
-                      : "—"}
-                  </span>
-                </div>
+        {/* RIGHT */}
+        <aside className="space-y-5">
+          <div className="card sticky top-24">
+            <h3 className="text-lg font-semibold text-salon-dark">
+              Booking summary
+            </h3>
+            <div className="mt-4 space-y-3 text-sm text-salon-dark/80">
+              <div className="flex justify-between">
+                <span>Style</span>
+                <span className="font-medium">
+                  {selectedStyle ? selectedStyle.name : "—"}
+                </span>
               </div>
-              <p className="mt-4 text-xs text-salon-dark/60">
-                Final price may vary based on hair length/complexity. You’ll get
-                a confirmation email after approval.
-              </p>
+              <div className="flex justify-between">
+                <span>Name</span>
+                <span className="font-medium">
+                  {customerName.trim() || "—"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Contact</span>
+                <span className="font-medium">
+                  {customerEmail || customerPhone || "—"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Date</span>
+                <span className="font-medium">{date || "—"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Time</span>
+                <span className="font-medium">{time || "—"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Duration</span>
+                <span className="font-medium">
+                  {selectedStyle ? `${selectedStyle.durationMins} mins` : "—"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Price</span>
+                <span className="font-medium">
+                  {selectedStyle
+                    ? `$${selectedStyle.priceMin}–${selectedStyle.priceMax}`
+                    : "—"}
+                </span>
+              </div>
             </div>
+            <p className="mt-4 text-xs text-salon-dark/60">
+              Final price may vary based on hair length/complexity. You’ll get a
+              confirmation message after approval.
+            </p>
+          </div>
 
-            <div className="card">
-              <h4 className="font-semibold text-salon-dark">Need help?</h4>
-              <p className="text-sm text-salon-dark/70 mt-1 space-x-2">
-                <a className="underline" href={SALON.phoneHref}>
-                  {SALON.phone}
-                </a>
-                <span>•</span>
-                <a className="underline" href={SALON.emailHref}>
-                  {SALON.email}
-                </a>
-                <span>•</span>
-                <a
-                  className="underline"
-                  target="_blank"
-                  rel="noreferrer"
-                  href={SALON.mapsUrl}
-                >
-                  Get directions
-                </a>
-              </p>
-            </div>
+          <div className="card">
+            <h4 className="font-semibold text-salon-dark">Need help?</h4>
+            <p className="text-sm text-salon-dark/70 mt-1 space-x-2">
+              <a className="underline" href={SALON.phoneHref}>
+                {SALON.phone}
+              </a>
+              <span>•</span>
+              <a className="underline" href={SALON.emailHref}>
+                {SALON.email}
+              </a>
+              <span>•</span>
+              <a
+                className="underline"
+                target="_blank"
+                rel="noreferrer"
+                href={SALON.mapsUrl}
+              >
+                Get directions
+              </a>
+            </p>
           </div>
         </aside>
       </div>
 
-      {/* Two-button confirmation modal */}
+      {/* Confirmation modal */}
       {confirmOpen && (
         <div
           className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-4"
@@ -457,17 +667,35 @@ export default function Booking() {
               Booking created
             </h3>
             <p className="mt-2 text-salon-dark/70">
-              Hi <span className="font-medium">{customerName.trim()}</span>,
-              your booking was created. How would you like to pay?
+              Hi{" "}
+              <span className="font-medium">
+                {(customerName || "there").trim()}
+              </span>
+              , your booking was created. How would you like to pay?
             </p>
 
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <button
-                onClick={handlePayOnline}
-                className="rounded-xl bg-salon-primary px-4 py-2.5 font-medium text-white hover:shadow-md transition"
-              >
-                Pay online (Stripe)
-              </button>
+              {authed && createdOwnedByUser ? (
+                <button
+                  onClick={handlePayOnline}
+                  className="rounded-xl bg-salon-primary px-4 py-2.5 font-medium text-white hover:shadow-md transition"
+                >
+                  Pay online (Stripe)
+                </button>
+              ) : (
+                <button
+                  onClick={() =>
+                    navigate("/login", {
+                      replace: true,
+                      state: { from: "/booking" },
+                    })
+                  }
+                  className="rounded-xl border border-rose-200 px-4 py-2.5 font-medium text-salon-dark hover:bg-rose-50 transition"
+                >
+                  Log in to pay online
+                </button>
+              )}
+
               <button
                 onClick={handlePayInSalon}
                 className="rounded-xl border border-rose-200 px-4 py-2.5 font-medium text-salon-dark hover:bg-rose-50 transition"
