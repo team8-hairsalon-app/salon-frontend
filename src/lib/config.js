@@ -1,7 +1,11 @@
+// src/lib/config.js
+
 export const SALON = {
-    phone: "123-456-7890",
-    phoneHref: "tel:1234567890",
-    email: "hello@salon.com",
-    emailHref: "mailto:hello@salon.com",
-    mapsUrl: "https://goo.gl/maps/xyz",
+  name: "Hair Salon",
+  address: "123 Main Street, Charlotte, NC",
+  phone: "(704) 555-0123",
+  phoneHref: "tel:+17045550123",
+  email: "hello@hairsalon.dev",
+  emailHref: "mailto:hello@hairsalon.dev",
+  mapsUrl: "https://www.google.com/maps?q=123+Main+Street,+Charlotte,+NC",
 };
