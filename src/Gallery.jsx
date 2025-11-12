@@ -116,7 +116,8 @@ export default function Gallery() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="card animate-pulse">
-              <div className="h-40 w-full rounded-xl bg-rose-100/60" />
+              {/* Match final aspect ratio to prevent layout shift */}
+              <div className="aspect-[4/3] w-full rounded-xl bg-rose-100/60" />
               <div className="mt-3 h-4 w-2/3 bg-rose-100/60 rounded" />
               <div className="mt-2 h-4 w-1/2 bg-rose-100/60 rounded" />
             </div>
