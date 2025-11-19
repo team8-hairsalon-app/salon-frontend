@@ -102,13 +102,13 @@ export default function Gallery() {
         </div>
 
         <div className="flex items-center justify-end">
-          <a
-            href="/booking"
+          <Link
+            to="/booking"
             className="rounded-full bg-salon-primary px-5 py-2 text-white font-medium shadow-sm hover:shadow-md transition"
           >
             Go to Booking
           </a>
-        </div>
+        </Link>
       </div>
 
       {/* Grid / states */}
