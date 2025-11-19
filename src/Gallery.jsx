@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import StyleCard from "./components/StyleCard";
 import { stylesApi } from "./lib/stylesApi";
 
@@ -61,8 +61,8 @@ export default function Gallery() {
       <header className="mb-6">
         <h1 className="section-title">Style Gallery</h1>
         <p className="text-center text-salon-dark/70">
-          Browse services by category, compare prices &amp; durations, and pick your
-          favorite.
+          Browse services by category, compare prices &amp; durations, and pick
+          your favorite.
         </p>
       </header>
 
@@ -107,8 +107,8 @@ export default function Gallery() {
             className="rounded-full bg-salon-primary px-5 py-2 text-white font-medium shadow-sm hover:shadow-md transition"
           >
             Go to Booking
-          </a>
-        </Link>
+          </Link>
+        </div>
       </div>
 
       {/* Grid / states */}
