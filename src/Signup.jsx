@@ -1,3 +1,4 @@
+// src/Signup.jsx
 import { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -5,6 +6,8 @@ import { authApi } from "./lib/authApi";
 
 const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const pwStrongRe = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d).{8,}$/;
+// same pattern you use elsewhere (Profile) for US-style numbers
+const phoneRe = /^\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$/;
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -12,6 +15,7 @@ export default function Signup() {
     firstName: "",
     lastName: "",
     email: "",
+    phone: "",
     password: "",
     confirm: "",
     dob: "",
@@ -25,13 +29,22 @@ export default function Signup() {
     const e = {};
     if (!form.firstName) e.firstName = "First name is required";
     if (!form.lastName) e.lastName = "Last name is required";
+
     if (!form.email) e.email = "Email is required";
     else if (!emailRe.test(form.email)) e.email = "Enter a valid email";
+
+    if (!form.phone) e.phone = "Phone number is required";
+    else if (!phoneRe.test(form.phone))
+      e.phone = "Enter a valid phone number";
+
     if (!form.password) e.password = "Password is required";
     else if (!pwStrongRe.test(form.password))
       e.password = "8+ chars with upper, lower, and a number";
+
     if (!form.confirm) e.confirm = "Confirm your password";
-    else if (form.confirm !== form.password) e.confirm = "Passwords do not match";
+    else if (form.confirm !== form.password)
+      e.confirm = "Passwords do not match";
+
     if (!form.dob) e.dob = "Date of birth is required";
     return e;
   }, [form]);
@@ -40,7 +53,8 @@ export default function Signup() {
 
   const onChange = (e) =>
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
-  const onBlur = (e) => setTouched((t) => ({ ...t, [e.target.name]: true }));
+  const onBlur = (e) =>
+    setTouched((t) => ({ ...t, [e.target.name]: true }));
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -54,6 +68,7 @@ export default function Signup() {
         email: form.email,
         password: form.password,
         dob: form.dob,
+        phone: form.phone,
       });
 
       // Save for greeting convenience on next login
@@ -63,9 +78,11 @@ export default function Signup() {
       toast.success("Account created! Please sign in.");
       navigate("/login", { replace: true });
     } catch (err) {
-      // If backend says email exists, redirect to login with a hint
-      const msg = (err?.response?.data && JSON.stringify(err.response.data)) || "Sign up failed.";
-      if (msg.toLowerCase().includes("already") || msg.toLowerCase().includes("exists")) {
+      const msg =
+        (err?.response?.data && JSON.stringify(err.response.data)) ||
+        "Sign up failed.";
+      const lower = msg.toLowerCase();
+      if (lower.includes("already") || lower.includes("exists")) {
         toast.error("An account with this email already exists. Please sign in.");
         navigate("/login", { replace: true });
       } else {
@@ -84,9 +101,16 @@ export default function Signup() {
           Join us to book appointments and track your history.
         </p>
 
-        <form className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-5" onSubmit={handleSubmit} noValidate>
+        <form
+          className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-5"
+          onSubmit={handleSubmit}
+          noValidate
+        >
           <div className="col-span-1">
-            <label htmlFor="firstName" className="block text-sm font-medium text-salon-dark">
+            <label
+              htmlFor="firstName"
+              className="block text-sm font-medium text-salon-dark"
+            >
               First name
             </label>
             <input
@@ -96,7 +120,11 @@ export default function Signup() {
               onChange={onChange}
               onBlur={onBlur}
               className={`mt-1 w-full rounded-xl border px-3 py-2 outline-none transition
-                ${errors.firstName && touched.firstName ? "border-rose-300 ring-2 ring-rose-100" : "border-rose-200 focus:ring-2 focus:ring-rose-200"}`}
+                ${
+                  errors.firstName && touched.firstName
+                    ? "border-rose-300 ring-2 ring-rose-100"
+                    : "border-rose-200 focus:ring-2 focus:ring-rose-200"
+                }`}
               placeholder="Jane"
             />
             {errors.firstName && touched.firstName && (
@@ -105,7 +133,10 @@ export default function Signup() {
           </div>
 
           <div className="col-span-1">
-            <label htmlFor="lastName" className="block text-sm font-medium text-salon-dark">
+            <label
+              htmlFor="lastName"
+              className="block text-sm font-medium text-salon-dark"
+            >
               Last name
             </label>
             <input
@@ -115,7 +146,11 @@ export default function Signup() {
               onChange={onChange}
               onBlur={onBlur}
               className={`mt-1 w-full rounded-xl border px-3 py-2 outline-none transition
-                ${errors.lastName && touched.lastName ? "border-rose-300 ring-2 ring-rose-100" : "border-rose-200 focus:ring-2 focus:ring-rose-200"}`}
+                ${
+                  errors.lastName && touched.lastName
+                    ? "border-rose-300 ring-2 ring-rose-100"
+                    : "border-rose-200 focus:ring-2 focus:ring-rose-200"
+                }`}
               placeholder="Doe"
             />
             {errors.lastName && touched.lastName && (
@@ -124,7 +159,10 @@ export default function Signup() {
           </div>
 
           <div className="md:col-span-2">
-            <label htmlFor="email" className="block text-sm font-medium text-salon-dark">
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium text-salon-dark"
+            >
               Email
             </label>
             <input
@@ -136,7 +174,11 @@ export default function Signup() {
               onChange={onChange}
               onBlur={onBlur}
               className={`mt-1 w-full rounded-xl border px-3 py-2 outline-none transition
-                ${errors.email && touched.email ? "border-rose-300 ring-2 ring-rose-100" : "border-rose-200 focus:ring-2 focus:ring-rose-200"}`}
+                ${
+                  errors.email && touched.email
+                    ? "border-rose-300 ring-2 ring-rose-100"
+                    : "border-rose-200 focus:ring-2 focus:ring-rose-200"
+                }`}
               placeholder="you@example.com"
             />
             {errors.email && touched.email && (
@@ -144,8 +186,38 @@ export default function Signup() {
             )}
           </div>
 
+          <div className="md:col-span-2">
+            <label
+              htmlFor="phone"
+              className="block text-sm font-medium text-salon-dark"
+            >
+              Phone number
+            </label>
+            <input
+              id="phone"
+              name="phone"
+              type="tel"
+              value={form.phone}
+              onChange={onChange}
+              onBlur={onBlur}
+              placeholder="(704) 555-0123"
+              className={`mt-1 w-full rounded-xl border px-3 py-2 outline-none transition
+                ${
+                  errors.phone && touched.phone
+                    ? "border-rose-300 ring-2 ring-rose-100"
+                    : "border-rose-200 focus:ring-2 focus:ring-rose-200"
+                }`}
+            />
+            {errors.phone && touched.phone && (
+              <p className="mt-1 text-xs text-rose-500">{errors.phone}</p>
+            )}
+          </div>
+
           <div className="col-span-1">
-            <label htmlFor="password" className="block text-sm font-medium text-salon-dark">
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-salon-dark"
+            >
               Password
             </label>
             <div className="relative mt-1">
@@ -157,7 +229,11 @@ export default function Signup() {
                 onChange={onChange}
                 onBlur={onBlur}
                 className={`w-full rounded-xl border px-3 py-2 pr-12 outline-none transition
-                  ${errors.password && touched.password ? "border-rose-300 ring-2 ring-rose-100" : "border-rose-200 focus:ring-2 focus:ring-rose-200"}`}
+                  ${
+                    errors.password && touched.password
+                      ? "border-rose-300 ring-2 ring-rose-100"
+                      : "border-rose-200 focus:ring-2 focus:ring-rose-200"
+                  }`}
                 placeholder="Strong password"
               />
               <button
@@ -177,7 +253,10 @@ export default function Signup() {
           </div>
 
           <div className="col-span-1">
-            <label htmlFor="confirm" className="block text-sm font-medium text-salon-dark">
+            <label
+              htmlFor="confirm"
+              className="block text-sm font-medium text-salon-dark"
+            >
               Confirm password
             </label>
             <div className="relative mt-1">
@@ -189,7 +268,11 @@ export default function Signup() {
                 onChange={onChange}
                 onBlur={onBlur}
                 className={`w-full rounded-xl border px-3 py-2 pr-12 outline-none transition
-                  ${errors.confirm && touched.confirm ? "border-rose-300 ring-2 ring-rose-100" : "border-rose-200 focus:ring-2 focus:ring-rose-200"}`}
+                  ${
+                    errors.confirm && touched.confirm
+                      ? "border-rose-300 ring-2 ring-rose-100"
+                      : "border-rose-200 focus:ring-2 focus:ring-rose-200"
+                  }`}
                 placeholder="Repeat password"
               />
               <button
@@ -206,7 +289,10 @@ export default function Signup() {
           </div>
 
           <div className="md:col-span-2">
-            <label htmlFor="dob" className="block text-sm font-medium text-salon-dark">
+            <label
+              htmlFor="dob"
+              className="block text-sm font-medium text-salon-dark"
+            >
               Date of birth
             </label>
             <input
@@ -217,7 +303,11 @@ export default function Signup() {
               onChange={onChange}
               onBlur={onBlur}
               className={`mt-1 w-full rounded-xl border px-3 py-2 outline-none transition
-                ${errors.dob && touched.dob ? "border-rose-300 ring-2 ring-rose-100" : "border-rose-200 focus:ring-2 focus:ring-rose-200"}`}
+                ${
+                  errors.dob && touched.dob
+                    ? "border-rose-300 ring-2 ring-rose-100"
+                    : "border-rose-200 focus:ring-2 focus:ring-rose-200"
+                }`}
             />
             {errors.dob && touched.dob && (
               <p className="mt-1 text-xs text-rose-500">{errors.dob}</p>
@@ -229,7 +319,11 @@ export default function Signup() {
               type="submit"
               disabled={!isValid || submitting}
               className={`w-full rounded-xl px-4 py-2 font-medium text-white transition
-                ${isValid && !submitting ? "bg-salon-primary hover:shadow-md" : "bg-rose-300/60 cursor-not-allowed"}`}
+                ${
+                  isValid && !submitting
+                    ? "bg-salon-primary hover:shadow-md"
+                    : "bg-rose-300/60 cursor-not-allowed"
+                }`}
             >
               {submitting ? "Creating…" : "Create account"}
             </button>
@@ -238,7 +332,10 @@ export default function Signup() {
 
         <p className="mt-5 text-center text-sm text-salon-dark/70">
           Already have an account?{" "}
-          <Link to="/login" className="font-medium text-salon-primary hover:underline">
+          <Link
+            to="/login"
+            className="font-medium text-salon-primary hover:underline"
+          >
             Sign in
           </Link>
         </p>
