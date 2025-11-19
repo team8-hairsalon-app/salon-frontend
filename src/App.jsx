@@ -1,5 +1,4 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-import { Toaster } from "react-hot-toast";
 import { useAuth } from "./lib/auth.jsx";
 import Navbar from "./components/Navbar.jsx";
 
@@ -22,11 +21,8 @@ function Protected({ children }) {
 export default function App() {
   return (
     <div className="min-h-screen">
-      {/* Single global toaster. Shorter default + top-right to avoid the mid/top duplicate. */}
-      <Toaster position="top-right" toastOptions={{ duration: 3500 }} />
 
       <Navbar />
-
       <div className="p-6 mx-auto max-w-6xl">
         <Routes>
           <Route path="/" element={<Home />} />
