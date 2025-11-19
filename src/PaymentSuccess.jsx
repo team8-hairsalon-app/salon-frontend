@@ -1,9 +1,19 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 export default function PaymentSuccess() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
+
+  // NEW: read appointment id
+  const apptId = params.get("appt");
+
+  // Mark appointment as paid locally so Profile.jsx can pick it up
+  useEffect(() => {
+    if (apptId) {
+      localStorage.setItem(`paid_appt:${apptId}`, "1");
+    }
+  }, [apptId]);
 
   const info = useMemo(() => {
     const first = (params.get("first") || "there").trim();
@@ -40,7 +50,11 @@ export default function PaymentSuccess() {
         <p className="text-salon-dark/80 mt-2">
           Thanks, <span className="font-semibold">{info.first}</span>!
           {info.amount ? (
-            <> We’ve received <span className="font-semibold">${info.amount}</span> for </>
+            <>
+              {" "}
+              We’ve received{" "}
+              <span className="font-semibold">${info.amount}</span> for{" "}
+            </>
           ) : (
             <> We’ve received your payment for </>
           )}
