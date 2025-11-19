@@ -49,13 +49,17 @@ export default function Navbar() {
       <div className="mx-auto max-w-6xl px-4 h-16 flex items-center justify-between">
         {/* Brand */}
         <Link to="/" className="flex items-center gap-2">
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-salon-primary text-white font-bold">
-            HS
-          </span>
+          <img 
+            src="/web-app-manifest-512x512.png" 
+            alt="Salon Logo"
+            className="h-12 w-12 rounded-full object-cover"
+          />
+
           <span className="text-lg font-semibold text-salon-dark">
             {SALON.name}
           </span>
         </Link>
+
 
         {/* Desktop */}
         <nav className="hidden md:flex items-center gap-1">
