@@ -578,11 +578,14 @@ export default function Booking() {
         </div>
 
         {/* RIGHT */}
-        <aside className="space-y-5">
-          <div className="card sticky top-24">
+        <aside className="space-y-5 lg:sticky lg:top-24 self-start">
+
+          {/* Booking summary */}
+          <div className="card">
             <h3 className="text-lg font-semibold text-salon-dark">
               Booking summary
             </h3>
+
             <div className="mt-4 space-y-3 text-sm text-salon-dark/80">
               <div className="flex justify-between">
                 <span>Style</span>
@@ -590,32 +593,38 @@ export default function Booking() {
                   {selectedStyle ? selectedStyle.name : "—"}
                 </span>
               </div>
+
               <div className="flex justify-between">
                 <span>Name</span>
                 <span className="font-medium">
                   {customerName.trim() || "—"}
                 </span>
               </div>
+
               <div className="flex justify-between">
                 <span>Contact</span>
                 <span className="font-medium">
                   {customerEmail || customerPhone || "—"}
                 </span>
               </div>
+
               <div className="flex justify-between">
                 <span>Date</span>
                 <span className="font-medium">{date || "—"}</span>
               </div>
+
               <div className="flex justify-between">
                 <span>Time</span>
                 <span className="font-medium">{time || "—"}</span>
               </div>
+
               <div className="flex justify-between">
                 <span>Duration</span>
                 <span className="font-medium">
                   {selectedStyle ? `${selectedStyle.durationMins} mins` : "—"}
                 </span>
               </div>
+
               <div className="flex justify-between">
                 <span>Price</span>
                 <span className="font-medium">
@@ -625,23 +634,30 @@ export default function Booking() {
                 </span>
               </div>
             </div>
+
             <p className="mt-4 text-xs text-salon-dark/60">
               Final price may vary based on hair length/complexity. You’ll get a
               confirmation message after approval.
             </p>
           </div>
 
+          {/* Need help box */}
           <div className="card">
             <h4 className="font-semibold text-salon-dark">Need help?</h4>
-            <p className="text-sm text-salon-dark/70 mt-1 space-x-2">
+
+            <p className="text-sm text-salon-dark/70 mt-2">
               <a className="underline" href={SALON.phoneHref}>
                 {SALON.phone}
               </a>
-              <span>•</span>
+            </p>
+
+            <p className="text-sm text-salon-dark/70 mt-1">
               <a className="underline" href={SALON.emailHref}>
                 {SALON.email}
               </a>
-              <span>•</span>
+            </p>
+
+            <p className="text-sm text-salon-dark/70 mt-1">
               <a
                 className="underline"
                 target="_blank"
@@ -652,7 +668,10 @@ export default function Booking() {
               </a>
             </p>
           </div>
+
+
         </aside>
+
       </div>
 
       {/* Confirmation modal */}
