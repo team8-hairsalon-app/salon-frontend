@@ -190,7 +190,7 @@ export default function Booking() {
     };
   }, [date, selectedStyleId]);
 
-  // Compute slots blocked by THIS user's own appointments (regardless of style)
+  // Compute slots blocked by THIS user's own appointments (logged-in only)
   const userBlockedSlots = useMemo(() => {
     if (!authed || !date || !userAppts.length) return [];
 
@@ -210,26 +210,22 @@ export default function Booking() {
       const startMinutes = hh * 60 + mm;
 
       const duration =
-        (appt.style && typeof appt.style.duration_mins === "number"
-          ? appt.style.duration_mins
-          : 60) || 60;
+        (appt.style?.duration_mins && Number(appt.style.duration_mins)) || 60;
 
-      const slotsCount = Math.max(1, Math.ceil(duration / 30));
+      const slotCount = Math.max(1, Math.floor(duration / 30));
 
-      for (let i = 0; i < slotsCount; i++) {
-        const total = startMinutes + i * 30;
-        const h = Math.floor(total / 60);
-        const m = total % 60;
-        const label = `${String(h).padStart(2, "0")}:${String(m).padStart(
-          2,
-          "0"
-        )}`;
+      for (let i = 0; i < slotCount; i++) {
+        const totalMins = startMinutes + i * 30;
+        const h = Math.floor(totalMins / 60);
+        const m = totalMins % 60;
+        const label = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
         blocked.add(label);
       }
     });
 
     return Array.from(blocked);
   }, [authed, date, userAppts]);
+
 
   // Validation
   const errors = useMemo(() => {
