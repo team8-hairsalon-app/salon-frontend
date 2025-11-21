@@ -3,6 +3,7 @@ export default function TimePicker({
   onChange,
   options = [],
   disabled = false,
+  taken = [],
 }) {
   return (
     <div>
@@ -16,20 +17,22 @@ export default function TimePicker({
         <option value="" disabled>
           {disabled
             ? "Pick a date first"
-            : options.length ? "Select a time" : "No times left for this date"}
+            : options.length
+            ? "Select a time"
+            : "No times left for this date"}
         </option>
 
         {options.map((t) => {
           const [hour, minute] = t.split(":").map(Number);
-
           const ampm = hour >= 12 ? "PM" : "AM";
           const hour12 = hour % 12 === 0 ? 12 : hour % 12;
-
           const label = `${hour12}:${minute.toString().padStart(2, "0")} ${ampm}`;
 
+          const isTaken = taken.includes(t);
+
           return (
-            <option key={t} value={t}>
-              {label}
+            <option key={t} value={t} disabled={isTaken}>
+              {isTaken ? `${label} (booked)` : label}
             </option>
           );
         })}
