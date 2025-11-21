@@ -112,6 +112,9 @@ export default function Booking() {
   // Taken slots from API
   const [takenSlots, setTakenSlots] = useState([]);
 
+  // User's own upcoming appointments (for overlap blocking)
+  const [userAppts, setUserAppts] = useState([]);
+
   // Fetch styles & honor ?styleId=
   const loadStyles = useCallback(async () => {
     setLoadingStyles(true);
@@ -137,6 +140,23 @@ export default function Booking() {
     loadStyles();
   }, [loadStyles]);
 
+  // Load user's own upcoming appointments when logged in
+  useEffect(() => {
+    if (!authed) {
+      setUserAppts([]);
+      return;
+    }
+    (async () => {
+      try {
+        const data = await appointmentsApi.upcoming();
+        setUserAppts(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("Failed to load user appointments", err);
+        setUserAppts([]);
+      }
+    })();
+  }, [authed]);
+
   // Derived lists
   const visibleStyles = useMemo(
     () =>
@@ -151,10 +171,8 @@ export default function Booking() {
     [styles, selectedStyleId]
   );
 
-  // Time options: business hours as-is (DON’T remove "taken")
   const businessSlots = useMemo(() => slotsForDate(date), [date]);
 
-  // Load taken slots whenever date + style change
   useEffect(() => {
     let ignore = false;
     (async () => {
@@ -171,6 +189,47 @@ export default function Booking() {
       ignore = true;
     };
   }, [date, selectedStyleId]);
+
+  // Compute slots blocked by THIS user's own appointments (regardless of style)
+  const userBlockedSlots = useMemo(() => {
+    if (!authed || !date || !userAppts.length) return [];
+
+    const blocked = new Set();
+
+    userAppts.forEach((appt) => {
+      const dtStr = appt?.datetime;
+      if (!dtStr || typeof dtStr !== "string") return;
+
+      const apptDate = dtStr.slice(0, 10);
+      if (apptDate !== date) return;
+
+      const hh = parseInt(dtStr.slice(11, 13), 10);
+      const mm = parseInt(dtStr.slice(14, 16), 10);
+      if (Number.isNaN(hh) || Number.isNaN(mm)) return;
+
+      const startMinutes = hh * 60 + mm;
+
+      const duration =
+        (appt.style && typeof appt.style.duration_mins === "number"
+          ? appt.style.duration_mins
+          : 60) || 60;
+
+      const slotsCount = Math.max(1, Math.ceil(duration / 30));
+
+      for (let i = 0; i < slotsCount; i++) {
+        const total = startMinutes + i * 30;
+        const h = Math.floor(total / 60);
+        const m = total % 60;
+        const label = `${String(h).padStart(2, "0")}:${String(m).padStart(
+          2,
+          "0"
+        )}`;
+        blocked.add(label);
+      }
+    });
+
+    return Array.from(blocked);
+  }, [authed, date, userAppts]);
 
   // Validation
   const errors = useMemo(() => {
@@ -191,10 +250,10 @@ export default function Booking() {
       e.date = "Pick a future date/time";
     }
 
-    // Only block taken times for logged-in users;
+    // Only block overlapping times for logged-in users;
     // guests are allowed to pick them (backend still enforces per-user overlap).
-    if (authed && date && time && takenSlots.includes(time)) {
-      e.time = "That time is already booked.";
+    if (authed && date && time && userBlockedSlots.includes(time)) {
+      e.time = "You already have a booking that overlaps this time.";
     }
 
     return e;
@@ -207,7 +266,7 @@ export default function Booking() {
     date,
     time,
     authed,
-    takenSlots,
+    userBlockedSlots,
   ]);
 
   const isValid = Object.keys(errors).length === 0;
@@ -297,8 +356,8 @@ export default function Booking() {
     return `${greet}, ${first}`;
   })();
 
-  // For TimePicker: only logged-in users see times greyed out
-  const takenForPicker = authed ? takenSlots : [];
+  // For TimePicker: only logged-in users see their own overlapping times greyed out
+  const takenForPicker = authed ? userBlockedSlots : [];
 
   return (
     <main className="section">
