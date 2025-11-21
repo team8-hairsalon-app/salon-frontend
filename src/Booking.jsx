@@ -52,12 +52,6 @@ function slotsForDate(dateStr) {
   return out;
 }
 
-// Stable browser-side dedupe key
-function bookingKey({ email, name, styleId, date, time }) {
-  const who = (email || name || "guest").toLowerCase().trim();
-  return `booking:${who}:${styleId}:${date}T${time}`;
-}
-
 /* ---------------- component ---------------- */
 
 export default function Booking() {
@@ -197,22 +191,10 @@ export default function Booking() {
       e.date = "Pick a future date/time";
     }
 
-    // DON’T block selecting a taken slot — TimePicker disables it
-    if (takenSlots.includes(time)) {
+    // Only block taken times for logged-in users;
+    // guests are allowed to pick them (backend still enforces per-user overlap).
+    if (authed && date && time && takenSlots.includes(time)) {
       e.time = "That time is already booked.";
-    }
-
-    if (selectedStyleId && date && time) {
-      const key = bookingKey({
-        email: (authed ? emailFromLocal() : customerEmail) || "",
-        name: customerName,
-        styleId: selectedStyleId,
-        date,
-        time,
-      });
-      if (localStorage.getItem(key)) {
-        e.duplicate = "You already booked this style at the same date/time.";
-      }
     }
 
     return e;
@@ -235,18 +217,6 @@ export default function Booking() {
     ev.preventDefault();
     if (!isValid || !selectedStyle) return;
 
-    const dedupeKey = bookingKey({
-      email: (authed ? emailFromLocal() : customerEmail) || "",
-      name: customerName,
-      styleId: selectedStyle.id,
-      date,
-      time,
-    });
-    if (localStorage.getItem(dedupeKey)) {
-      toast.error("Duplicate booking blocked.");
-      return;
-    }
-
     setSubmitting(true);
     try {
       const appt = await appointmentsApi.create({
@@ -259,10 +229,10 @@ export default function Booking() {
         contact_phone: customerPhone || undefined,
       });
 
-      localStorage.setItem(dedupeKey, String(Date.now()));
       setCreatedOwnedByUser(isLoggedIn());
       setCreatedApptId(appt.id);
 
+      // Single toast only; shorter duration handled by global Toaster
       toast.dismiss("booking-success");
       toast.success(`Booked ${selectedStyle.name} on ${date} at ${time}!`, {
         id: "booking-success",
@@ -326,6 +296,9 @@ export default function Booking() {
       hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening";
     return `${greet}, ${first}`;
   })();
+
+  // For TimePicker: only logged-in users see times greyed out
+  const takenForPicker = authed ? takenSlots : [];
 
   return (
     <main className="section">
@@ -475,7 +448,8 @@ export default function Booking() {
 
               <div>
                 <label className="block text-sm font-medium text-salon-dark">
-                  Email {bookingAs === "guest"
+                  Email{" "}
+                  {bookingAs === "guest"
                     ? "(email or phone required)"
                     : "(optional)"}
                 </label>
@@ -490,7 +464,8 @@ export default function Booking() {
 
               <div>
                 <label className="block text-sm font-medium text-salon-dark">
-                  Phone {bookingAs === "guest"
+                  Phone{" "}
+                  {bookingAs === "guest"
                     ? "(email or phone required)"
                     : "(optional)"}
                 </label>
@@ -506,11 +481,6 @@ export default function Booking() {
               {errors.contact && (
                 <p className="sm:col-span-2 text-xs text-rose-600">
                   {errors.contact}
-                </p>
-              )}
-              {errors.duplicate && (
-                <p className="sm:col-span-2 text-xs text-rose-600">
-                  {errors.duplicate}
                 </p>
               )}
 
@@ -534,13 +504,21 @@ export default function Booking() {
                 )}
               </div>
 
+              {/* Time (all business hours; greying logic in TimePicker) */}
               <TimePicker
                 value={time}
                 onChange={setTime}
                 options={businessSlots}
-                taken={takenSlots}
+                taken={takenForPicker}
                 disabled={!date}
               />
+
+              {/* Time error */}
+              {errors.time && (
+                <p className="sm:col-span-2 text-xs text-rose-600">
+                  {errors.time}
+                </p>
+              )}
 
               {/* Notes */}
               <div className="sm:col-span-2">
@@ -576,7 +554,6 @@ export default function Booking() {
 
         {/* RIGHT */}
         <aside className="space-y-5 lg:sticky lg:top-24 self-start">
-
           {/* Booking summary */}
           <div className="card">
             <h3 className="text-lg font-semibold text-salon-dark">
@@ -618,7 +595,9 @@ export default function Booking() {
                         const [hour, minute] = time.split(":").map(Number);
                         const ampm = hour >= 12 ? "PM" : "AM";
                         const hour12 = hour % 12 === 0 ? 12 : hour % 12;
-                        return `${hour12}:${minute.toString().padStart(2, "0")} ${ampm}`;
+                        return `${hour12}:${minute
+                          .toString()
+                          .padStart(2, "0")} ${ampm}`;
                       })()
                     : "—"}
                 </span>
@@ -647,7 +626,6 @@ export default function Booking() {
             </p>
           </div>
 
-
           {/* Need help box */}
           <div className="card">
             <h4 className="font-semibold text-salon-dark">Need help?</h4>
@@ -675,10 +653,7 @@ export default function Booking() {
               </a>
             </p>
           </div>
-
-
         </aside>
-
       </div>
 
       {/* Confirmation modal */}
