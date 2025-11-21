@@ -88,15 +88,13 @@ export const appointmentsApi = {
     return data; // => { url }
   },
 
-  /**
-   * Get taken HH:MM slots for a specific date (and optionally style).
-   * Public endpoint: GET /api/appointments/taken/?date=YYYY-MM-DD[&style_id=ID]
-   * Returns array like ["09:00","09:30", ...]
-   */
-  async getTakenSlots(date, styleId) {
+   async getTakenSlots(date, styleId) {
     const params = { date };
     if (styleId) params.style_id = styleId;
+
     const { data } = await http.get("/appointments/taken/", { params });
+
     return Array.isArray(data?.taken) ? data.taken : [];
   },
+
 };
