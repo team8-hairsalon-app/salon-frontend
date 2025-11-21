@@ -18,11 +18,21 @@ export default function TimePicker({
             ? "Pick a date first"
             : options.length ? "Select a time" : "No times left for this date"}
         </option>
-        {options.map((t) => (
-          <option key={t} value={t}>
-            {t}
-          </option>
-        ))}
+
+        {options.map((t) => {
+          const [hour, minute] = t.split(":").map(Number);
+
+          const ampm = hour >= 12 ? "PM" : "AM";
+          const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+
+          const label = `${hour12}:${minute.toString().padStart(2, "0")} ${ampm}`;
+
+          return (
+            <option key={t} value={t}>
+              {label}
+            </option>
+          );
+        })}
       </select>
     </div>
   );
