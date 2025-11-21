@@ -1,4 +1,4 @@
-// authApi.js
+// src/lib/authApi.js
 import { http } from "./http";
 
 function decodeJwt(token) {
@@ -12,14 +12,17 @@ function decodeJwt(token) {
 }
 
 export const authApi = {
-  async register({ first_name, last_name, email, password, dob }) {
-    const { data } = await http.post("/auth/register/", {
+  async register({ first_name, last_name, email, password, dob, phone }) {
+    const payload = {
       first_name,
       last_name,
       email,
       password,
-      dob,
-    });
+      dob: dob || null,
+      phone: phone || "",
+    };
+
+    const { data } = await http.post("/auth/register/", payload);
     return data;
   },
 
