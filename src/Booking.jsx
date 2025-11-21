@@ -157,12 +157,8 @@ export default function Booking() {
     [styles, selectedStyleId]
   );
 
-  // Time options: business hours minus "taken" from backend
+  // Time options: business hours as-is (DON’T remove "taken")
   const businessSlots = useMemo(() => slotsForDate(date), [date]);
-  const availableSlots = useMemo(
-    () => businessSlots.filter((t) => !takenSlots.includes(t)),
-    [businessSlots, takenSlots]
-  );
 
   // Load taken slots whenever date + style change
   useEffect(() => {
@@ -201,8 +197,9 @@ export default function Booking() {
       e.date = "Pick a future date/time";
     }
 
-    if (date && time && availableSlots.length && !availableSlots.includes(time)) {
-      e.time = "That time was just booked. Pick another.";
+    // DON’T block selecting a taken slot — TimePicker disables it
+    if (takenSlots.includes(time)) {
+      e.time = "That time is already booked.";
     }
 
     if (selectedStyleId && date && time) {
@@ -228,8 +225,9 @@ export default function Booking() {
     date,
     time,
     authed,
-    availableSlots,
+    takenSlots,
   ]);
+
   const isValid = Object.keys(errors).length === 0;
 
   // Submit
@@ -265,7 +263,6 @@ export default function Booking() {
       setCreatedOwnedByUser(isLoggedIn());
       setCreatedApptId(appt.id);
 
-      // Single toast only; shorter duration handled by global Toaster
       toast.dismiss("booking-success");
       toast.success(`Booked ${selectedStyle.name} on ${date} at ${time}!`, {
         id: "booking-success",
@@ -400,7 +397,7 @@ export default function Booking() {
                           {s.name}
                         </h3>
                         <p className="text-sm text-salon-dark/70">
-                          ${s.priceMin}–{s.priceMax} • {s.durationMins} mins
+                          ${s.priceMin}–${s.priceMax} • {s.durationMins} mins
                         </p>
                       </div>
                     </button>
@@ -413,7 +410,7 @@ export default function Booking() {
             )}
           </Section>
 
-          {/* 2) Details & time */}
+          {/* 2) Your details & time */}
           <Section title="2) Your details & time">
             <form className="grid sm:grid-cols-2 gap-5" onSubmit={handleSubmit}>
               {/* Book as */}
@@ -537,11 +534,11 @@ export default function Booking() {
                 )}
               </div>
 
-              {/* Time (available business hours minus taken slots) */}
               <TimePicker
                 value={time}
                 onChange={setTime}
-                options={availableSlots}
+                options={businessSlots}
+                taken={takenSlots}
                 disabled={!date}
               />
 
@@ -615,7 +612,16 @@ export default function Booking() {
 
               <div className="flex justify-between">
                 <span>Time</span>
-                <span className="font-medium">{time || "—"}</span>
+                <span className="font-medium">
+                  {time
+                    ? (() => {
+                        const [hour, minute] = time.split(":").map(Number);
+                        const ampm = hour >= 12 ? "PM" : "AM";
+                        const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+                        return `${hour12}:${minute.toString().padStart(2, "0")} ${ampm}`;
+                      })()
+                    : "—"}
+                </span>
               </div>
 
               <div className="flex justify-between">
@@ -640,6 +646,7 @@ export default function Booking() {
               confirmation message after approval.
             </p>
           </div>
+
 
           {/* Need help box */}
           <div className="card">
