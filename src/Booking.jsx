@@ -224,10 +224,7 @@ export default function Booking() {
 
       const startMinutes = hh * 60 + mm;
 
-      const duration =
-        Number(appt.style_duration_mins) ||
-        Number(appt.style?.duration_mins) ||
-        60;
+      const duration = Number(appt.style_duration_mins ?? appt.style?.duration_mins ?? appt.style?.durationMins ?? 60);
 
       const slotCount = Math.ceil(duration / 30);
 
