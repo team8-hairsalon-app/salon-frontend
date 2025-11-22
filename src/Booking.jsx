@@ -206,7 +206,7 @@ export default function Booking() {
     };
   }, [date, selectedStyleId]);
 
-    const userBlockedSlots = useMemo(() => {
+  const userBlockedSlots = useMemo(() => {
     if (!authed || !date || !userAppts.length) return [];
 
     const blocked = new Set();
@@ -224,7 +224,16 @@ export default function Booking() {
 
       const startMinutes = hh * 60 + mm;
 
-      const duration = Number(appt.style_duration_mins ?? appt.style?.duration_mins ?? appt.style?.durationMins ?? 60);
+      const styleId = appt.style;
+      const style = styles.find((s) => String(s.id) === String(styleId));
+
+      const duration =
+        (style && (Number(style.durationMins) || Number(style.duration_mins))) ||
+        Number(
+          appt.style_duration_mins ??
+          appt.style?.duration_mins ??
+          appt.style?.durationMins
+        ) || 60;
 
       const slotCount = Math.ceil(duration / 30);
 
@@ -232,13 +241,15 @@ export default function Booking() {
         const totalMins = startMinutes + i * 30;
         const h = Math.floor(totalMins / 60);
         const m = totalMins % 60;
-        const label = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+        const label = `${String(h).padStart(2, "0")}:${String(m)
+          .toString()
+          .padStart(2, "0")}`;
         blocked.add(label);
       }
     });
 
-    return Array.from(blocked);
-  }, [authed, date, userAppts]);
+      return Array.from(blocked);
+    }, [authed, date, userAppts, styles]);
 
   const guestBlockedSlots = useMemo(() => {
     if (authed) return [];
