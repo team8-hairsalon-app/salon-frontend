@@ -19,6 +19,21 @@ const categories = [
   { id: "styling", label: "Styling" },
 ];
 
+function parseHHMM(str) {
+  const [h, m] = str.split(":").map(Number);
+  return h * 60 + m;
+}
+
+// Returns closing time in minutes after midnight for the given date.
+function closingMinutesForDate(dateStr) {
+  if (!dateStr) return 19 * 60;
+  const d = new Date(`${dateStr}T00:00:00`);
+  const dow = d.getDay();
+  if (dow === 0) return 0;
+  const closeHour = dow === 6 ? 18 : 19;
+  return closeHour * 60;
+}
+
 const isLoggedIn = () => !!localStorage.getItem("access_token");
 const firstNameFromLocal = () =>
   (localStorage.getItem("user_first_name") || "").trim();
@@ -39,7 +54,7 @@ function slotsForDate(dateStr) {
   if (!dateStr) return [];
   const d = new Date(`${dateStr}T00:00:00`);
   const dow = d.getDay();
-  if (dow === 0) return []; // Sunday
+  if (dow === 0) return [];
 
   const openHour = 9;
   const closeHour = dow === 6 ? 18 : 19;
@@ -109,7 +124,7 @@ export default function Booking() {
   const [createdApptId, setCreatedApptId] = useState(null);
   const [createdOwnedByUser, setCreatedOwnedByUser] = useState(false);
 
-  // Taken slots from API
+  // Taken slots from API (per 30-min block, all styles, all users)
   const [takenSlots, setTakenSlots] = useState([]);
 
   // User's own upcoming appointments (for overlap blocking)
@@ -173,13 +188,14 @@ export default function Booking() {
 
   const businessSlots = useMemo(() => slotsForDate(date), [date]);
 
+  // Load taken slots for a given date (all styles)
   useEffect(() => {
     let ignore = false;
     (async () => {
       setTakenSlots([]);
       if (!date || !selectedStyleId) return;
       try {
-        const taken = await appointmentsApi.getTakenSlots(date, selectedStyleId);
+        const taken = await appointmentsApi.getTakenSlots(date);
         if (!ignore) setTakenSlots(taken);
       } catch (err) {
         console.error("Failed to load taken slots:", err);
@@ -190,8 +206,7 @@ export default function Booking() {
     };
   }, [date, selectedStyleId]);
 
-  // Compute slots blocked by THIS user's own appointments (logged-in only)
-  const userBlockedSlots = useMemo(() => {
+    const userBlockedSlots = useMemo(() => {
     if (!authed || !date || !userAppts.length) return [];
 
     const blocked = new Set();
@@ -210,9 +225,11 @@ export default function Booking() {
       const startMinutes = hh * 60 + mm;
 
       const duration =
-        (appt.style?.duration_mins && Number(appt.style.duration_mins)) || 60;
+        Number(appt.style_duration_mins) ||
+        Number(appt.style?.duration_mins) ||
+        60;
 
-      const slotCount = Math.max(1, Math.floor(duration / 30));
+      const slotCount = Math.ceil(duration / 30);
 
       for (let i = 0; i < slotCount; i++) {
         const totalMins = startMinutes + i * 30;
@@ -226,6 +243,35 @@ export default function Booking() {
     return Array.from(blocked);
   }, [authed, date, userAppts]);
 
+  const guestBlockedSlots = useMemo(() => {
+    if (authed) return [];
+    if (!date) return [];
+
+    const email = (customerEmail || "").trim().toLowerCase();
+    const phone = (customerPhone || "").trim();
+
+    if (!email && !phone) return [];
+
+    const blocked = new Set();
+
+    takenSlots.forEach((slot) => {
+      const isSameEmail =
+        email &&
+        slot.contact_email &&
+        slot.contact_email.toLowerCase() === email;
+
+      const isSamePhone =
+        phone && slot.contact_phone && slot.contact_phone === phone;
+
+      if (!isSameEmail && !isSamePhone) return;
+
+      if (slot.time) {
+        blocked.add(slot.time);
+      }
+    });
+
+    return Array.from(blocked);
+  }, [authed, date, customerEmail, customerPhone, takenSlots]);
 
   // Validation
   const errors = useMemo(() => {
@@ -246,8 +292,6 @@ export default function Booking() {
       e.date = "Pick a future date/time";
     }
 
-    // Only block overlapping times for logged-in users;
-    // guests are allowed to pick them (backend still enforces per-user overlap).
     if (authed && date && time && userBlockedSlots.includes(time)) {
       e.time = "You already have a booking that overlaps this time.";
     }
@@ -287,7 +331,6 @@ export default function Booking() {
       setCreatedOwnedByUser(isLoggedIn());
       setCreatedApptId(appt.id);
 
-      // Single toast only; shorter duration handled by global Toaster
       toast.dismiss("booking-success");
       toast.success(`Booked ${selectedStyle.name} on ${date} at ${time}!`, {
         id: "booking-success",
@@ -352,8 +395,63 @@ export default function Booking() {
     return `${greet}, ${first}`;
   })();
 
-  // For TimePicker: only logged-in users see their own overlapping times greyed out
-  const takenForPicker = authed ? userBlockedSlots : [];
+  // Combined disable logic for timepicker
+  const disabledTimes = useMemo(() => {
+    if (!date || !selectedStyle) return [];
+
+    // Styles API uses camelCase keys in the frontend objects
+    const duration =
+      Number(selectedStyle.durationMins) ||
+      Number(selectedStyle.duration_mins) ||
+      60;
+
+    const disabled = new Set();
+
+    const today = new Date();
+    const todayYMD = today.getFullYear() +
+      "-" + String(today.getMonth()+1).padStart(2,"0") +
+      "-" + String(today.getDate()).padStart(2,"0");
+    const nowMins = today.getHours() * 60 + today.getMinutes();
+
+    const dayClosingMins = closingMinutesForDate(date);
+
+    const overlapBlocked = authed ? userBlockedSlots : guestBlockedSlots;
+
+    businessSlots.forEach((slot) => {
+      const start = parseHHMM(slot);
+      const end = start + duration;
+
+      if (date === todayYMD && start <= nowMins) {
+        disabled.add(slot);
+        return;
+      }
+
+      if (end > dayClosingMins) {
+        disabled.add(slot);
+        return;
+      }
+
+      if (overlapBlocked.includes(slot)) {
+        disabled.add(slot);
+        return;
+      }
+
+      for (const blocked of overlapBlocked) {
+        const blockedStart = parseHHMM(blocked);
+        const blockedEnd = blockedStart + 30;
+
+        const newStart = start;
+        const newEnd = start + duration;
+
+        if (newStart < blockedEnd && newEnd > blockedStart) {
+          disabled.add(slot);
+          return;
+        }
+      }
+    });
+
+    return Array.from(disabled);
+  }, [date, selectedStyle, authed, userBlockedSlots, guestBlockedSlots, businessSlots]);
 
   return (
     <main className="section">
@@ -449,15 +547,21 @@ export default function Booking() {
                 <div className="mt-1 inline-flex rounded-full bg-rose-50 p-1 shadow-sm">
                   <button
                     type="button"
-                    onClick={() => setBookingAs("guest")}
-                    className={`px-4 py-1 rounded-full text-sm font-medium transition ${
-                      bookingAs === "guest"
-                        ? "bg-salon-primary text-white shadow"
-                        : "text-salon-dark hover:bg-white/60"
-                    }`}
+                    disabled={authed}
+                    onClick={!authed ? () => setBookingAs("guest") : undefined}
+                    className={`px-4 py-1 rounded-full text-sm font-medium transition
+                      ${
+                        authed
+                          ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                          : bookingAs === "guest"
+                          ? "bg-salon-primary text-white shadow"
+                          : "text-salon-dark hover:bg-white/60"
+                      }
+                    `}
                   >
                     Guest
                   </button>
+
                   <button
                     type="button"
                     onClick={() => {
@@ -564,9 +668,10 @@ export default function Booking() {
                 value={time}
                 onChange={setTime}
                 options={businessSlots}
-                taken={takenForPicker}
-                disabled={!date}
+                disabled={false}
+                disabledTimes={disabledTimes}
               />
+
 
               {/* Time error */}
               {errors.time && (
