@@ -88,13 +88,11 @@ export const appointmentsApi = {
     return data; // => { url }
   },
 
-   async getTakenSlots(date, styleId) {
+   async getTakenSlots(date) {
     const params = { date };
-    if (styleId) params.style_id = styleId;
 
     const { data } = await http.get("/appointments/taken/", { params });
 
     return Array.isArray(data?.taken) ? data.taken : [];
   },
-
 };
