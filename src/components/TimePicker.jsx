@@ -4,6 +4,7 @@ export default function TimePicker({
   options = [],
   disabled = false,
   disabledTimes = [],
+  className=""
   }) {
   return (
     <div>
@@ -13,7 +14,7 @@ export default function TimePicker({
         value={value}
         onChange={(e) => onChange?.(e.target.value)}
         disabled={disabled || options.length === 0}
-        className="mt-1 w-full rounded-xl border border-rose-200 px-3 py-2 outline-none focus:ring-2 focus:ring-rose-200 disabled:bg-gray-50"
+        className={`"mt-1 w-full rounded-xl border border-rose-200 px-3 py-2 outline-none focus:ring-2 focus:ring-rose-200 ${disabled ? "bg-gray-100 opacity-50 " : ""}${className}`}
       >
         {/* Placeholder option */}
         <option value="" disabled>
