@@ -187,6 +187,7 @@ export default function Booking() {
   );
 
   const businessSlots = useMemo(() => slotsForDate(date), [date]);
+  const disableUntilStyle = !selectedStyleId;
 
   // Load taken slots for a given date (all styles)
   useEffect(() => {
@@ -596,6 +597,7 @@ export default function Booking() {
                   Your name
                 </label>
                 <input
+                  disabled={disableUntilStyle}
                   type="text"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
@@ -621,6 +623,7 @@ export default function Booking() {
                     : "(optional)"}
                 </label>
                 <input
+                  disabled={disableUntilStyle}
                   type="email"
                   value={customerEmail}
                   onChange={(e) => setCustomerEmail(e.target.value)}
@@ -637,6 +640,7 @@ export default function Booking() {
                     : "(optional)"}
                 </label>
                 <input
+                  disabled={disableUntilStyle}
                   type="tel"
                   value={customerPhone}
                   onChange={(e) => setCustomerPhone(e.target.value)}
@@ -664,6 +668,7 @@ export default function Booking() {
                   }}
                   disableSunday={true}
                   disablePast={true}
+                  disabled={disableUntilStyle}
                   className="mt-1"
                 />
                 {errors.date && (
@@ -676,7 +681,7 @@ export default function Booking() {
                 value={time}
                 onChange={setTime}
                 options={businessSlots}
-                disabled={false}
+                disabled={disableUntilStyle}
                 disabledTimes={disabledTimes}
               />
 
@@ -694,6 +699,7 @@ export default function Booking() {
                   Notes (optional)
                 </label>
                 <textarea
+                  disabled={disableUntilStyle}
                   rows={4}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}

@@ -27,6 +27,7 @@ export default function DatePicker({
   onChange,         // (yyyy-mm-dd) => void
   disableSunday = true,
   disablePast = true,
+  disabled = false,
   className = "",
 }) {
   const today = toDateOnly(new Date());
@@ -67,7 +68,7 @@ export default function DatePicker({
   const selectedYMD = value;
 
   return (
-    <div className={`w-full rounded-xl border border-rose-200 p-3 ${className}`}>
+    <div className={`w-full rounded-xl border border-rose-200 p-3 ${disabled ? "bg-gray-100 opacity-50 pointer-events-none" : ""} ${className}`}>
       <div className="flex items-center justify-between mb-2">
         <button
           type="button"
